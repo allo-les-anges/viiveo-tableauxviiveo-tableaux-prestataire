@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tableau des Missions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: transparent;
+            margin: 0;
+            padding: 0;
+        }
+        .mission-table {
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+        }
+        .mission-table tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        .mission-table tr:nth-child(odd) {
+            background-color: #ffffff;
+        }
+        .mission-table tr:hover {
+            background-color: #e0e7ff;
+        }
+        .action-btn {
+            transition: transform 0.2s;
+        }
+        .action-btn:hover {
+            transform: scale(1.2);
+        }
+        .section-title {
+            position: relative;
+            display: inline-block;
+        }
+        .section-title:after {
+            content: '';
+            position: absolute;
+            width: 60%;
+            height: 3px;
+            bottom: -8px;
+            left: 0;
+        }
+        .section-title.validate:after {
+            background-color: #3b82f6;
+        }
+        .section-title.upcoming:after {
+            background-color: #f59e0b;
+        }
+        .section-title.completed:after {
+            background-color: #10b981;
+        }
+        .header-validate {
+            background-color: #3b82f6;
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+        .header-upcoming {
+            background-color: #f59e0b;
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+        .header-completed {
+            background-color: #10b981;
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            overflow: auto;
+            animation: fadeIn 0.3s;
+        }
+        .modal-content {
+            background-color: #fff;
+            margin: 10% auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            width: 80%;
+            max-width: 600px;
+            animation: slideIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #374151;
+        }
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            font-size: 1rem;
+            transition: border-color 0.15s ease-in-out;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+        }
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: background-color 0.15s ease-in-out;
+            cursor: pointer;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        .btn-secondary {
+            background-color: #9ca3af;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: background-color 0.15s ease-in-out;
+            cursor: pointer;
+        }
+        .btn-secondary:hover {
+            background-color: #6b7280;
+        }
+        .btn-danger {
+            background-color: #ef4444;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: background-color 0.15s ease-in-out;
+            cursor: pointer;
+        }
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        .overflow-x-auto {
+            overflow-x: auto;
+        }
+        .flex {
+            display: flex;
+        }
+        .justify-between {
+            justify-content: space-between;
+        }
+        .items-center {
+            align-items: center;
+        }
+        .mb-8 {
+            margin-bottom: 2rem;
+        }
+        .mb-6 {
+            margin-bottom: 1.5rem;
+        }
+        .mb-12 {
+            margin-bottom: 3rem;
+        }
+        .space-x-4 > * + * {
+            margin-left: 1rem;
+        }
+        .text-3xl {
+            font-size: 1.875rem;
+        }
+        .text-2xl {
+            font-size: 1.5rem;
+        }
+        .font-bold {
+            font-weight: 700;
+        }
+        .font-semibold {
+            font-weight: 600;
+        }
+        .text-gray-800 {
+            color: #1f2937;
+        }
+        .text-gray-700 {
+            color: #374151;
+        }
+        .text-gray-500 {
+            color: #6b7280;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .text-left {
+            text-align: left;
+        }
+        .py-3 {
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+        }
+        .px-4 {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+        .py-10 {
+            padding-top: 2.5rem;
+            padding-bottom: 2.5rem;
+        }
+        .border-b {
+            border-bottom-width: 1px;
+        }
+        .border-gray-200 {
+            border-color: #e5e7eb;
+        }
+        .mx-1 {
+            margin-left: 0.25rem;
+            margin-right: 0.25rem;
+        }
+        .mr-2 {
+            margin-right: 0.5rem;
+        }
+        .h-5, .w-5 {
+            height: 1.25rem;
+            width: 1.25rem;
+        }
+        .h-6, .w-6 {
+            height: 1.5rem;
+            width: 1.5rem;
+        }
+        .h-12, .w-12 {
+            height: 3rem;
+            width: 3rem;
+        }
+        .mx-auto {
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .mb-3 {
+            margin-bottom: 0.75rem;
+        }
+        .text-lg {
+            font-size: 1.125rem;
+        }
+        .font-medium {
+            font-weight: 500;
+        }
+        .text-green-500 {
+            color: #10b981;
+        }
+        .text-red-500 {
+            color: #ef4444;
+        }
+        .text-gray-400 {
+            color: #9ca3af;
+        }
+        .grid {
+            display: grid;
+        }
+        .grid-cols-1 {
+            grid-template-columns: repeat(1, minmax(0, 1fr));
+        }
+        .gap-4 {
+            gap: 1rem;
+        }
+        .my-6 {
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .border-gray-300 {
+            border-color: #d1d5db;
+        }
+        .text-lg {
+            font-size: 1.125rem;
+        }
+        .mb-4 {
+            margin-bottom: 1rem;
+        }
+        .justify-end {
+            justify-content: flex-end;
+        }
+        .mt-6 {
+            margin-top: 1.5rem;
+        }
+        .fixed {
+            position: fixed;
+        }
+        .top-4 {
+            top: 1rem;
+        }
+        .right-4 {
+            right: 1rem;
+        }
+        .rounded-lg {
+            border-radius: 0.5rem;
+        }
+        .shadow-lg {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .bg-green-500 {
+            background-color: #10b981;
+        }
+        .bg-red-500 {
+            background-color: #ef4444;
+        }
+        .transition-all {
+            transition-property: all;
+        }
+        .duration-300 {
+            transition-duration: 300ms;
+        }
+        .transform {
+            transform: translateX(0);
+        }
+        .translate-x-full {
+            transform: translateX(100%);
+        }
+        .opacity-0 {
+            opacity: 0;
+        }
+        .z-50 {
+            z-index: 50;
+        }
+        
+        @media (min-width: 768px) {
+            .md\:grid-cols-2 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Gestion des Missions</h1>
+            <div class="flex space-x-4">
+                <button id="btnPersonalData" class="btn-primary flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                    </svg>
+                    Données personnelles
+                </button>
+                <button id="btnLogout" class="btn-danger flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm7 4a1 1 0 10-2 0v4a1 1 0 102 0V7zm1 4a1 1 0 102 0V7a1 1 0 10-2 0v4z" clip-rule="evenodd" />
+                        <path d="M13 7a1 1 0 100-2h-2a1 1 0 000 2h2zm-2 6a1 1 0 100 2h2a1 1 0 100-2h-2z" />
+                    </svg>
+                    Déconnexion
+                </button>
+            </div>
+        </div>
+        
+        <!-- Missions à valider -->
+        <div class="mb-12">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-6 section-title validate">Missions à valider</h2>
+            <div class="overflow-x-auto">
+                <table class="mission-table">
+                    <thead>
+                        <tr>
+                            <th class="py-3 px-4 text-left header-validate">ID</th>
+                            <th class="py-3 px-4 text-left header-validate">Client</th>
+                            <th class="py-3 px-4 text-left header-validate">Adresse</th>
+                            <th class="py-3 px-4 text-left header-validate">Service</th>
+                            <th class="py-3 px-4 text-left header-validate">Date</th>
+                            <th class="py-3 px-4 text-left header-validate">Heure</th>
+                            <th class="py-3 px-4 text-center header-validate">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="py-3 px-4 border-b border-gray-200">M0001</td>
+                            <td class="py-3 px-4 border-b border-gray-200">MUKEBA-HARCHIES</td>
+                            <td class="py-3 px-4 border-b border-gray-200">Rue du Colâ</td>
+                            <td class="py-3 px-4 border-b border-gray-200">Assistance / Secours</td>
+                            <td class="py-3 px-4 border-b border-gray-200">02/07/2025</td>
+                            <td class="py-3 px-4 border-b border-gray-200">18h00</td>
+                            <td class="py-3 px-4 border-b border-gray-200 text-center">
+                                <button class="action-btn text-green-500 mx-1" onclick="validateMission('M0001')">✅</button>
+                                <button class="action-btn text-red-500 mx-1" onclick="rejectMission('M0001')">❌</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 px-4 border-b border-gray-200">M0002</td>
+                            <td class="py-3 px-4 border-b border-gray-200">MUKEBA-HARCHIES</td>
+                            <td class="py-3 px-4 border-b border-gray-200">Rue du Colâ</td>
+                            <td class="py-3 px-4 border-b border-gray-200">Courses à domicile</td>
+                            <td class="py-3 px-4 border-b border-gray-200">02/07/2025</td>
+                            <td class="py-3 px-4 border-b border-gray-200">12h00</td>
+                            <td class="py-3 px-4 border-b border-gray-200 text-center">
+                                <button class="action-btn text-green-500 mx-1" onclick="validateMission('M0002')">✅</button>
+                                <button class="action-btn text-red-500 mx-1" onclick="rejectMission('M0002')">❌</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 px-4 border-b border-gray-200">M0003</td>
+                            <td class="py-3 px-4 border-b border-gray-200">MUKEBA-HARCHIES</td>
+                            <td class="py-3 px-4 border-b border-gray-200">Rue du Colâ</td>
+                            <td class="py-3 px-4 border-b border-gray-200">Courses à domicile</td>
+                            <td class="py-3 px-4 border-b border-gray-200">02/07/2025</td>
+                            <td class="py-3 px-4 border-b border-gray-200">12h00</td>
+                            <td class="py-3 px-4 border-b border-gray-200 text-center">
+                                <button class="action-btn text-green-500 mx-1" onclick="validateMission('M0003')">✅</button>
+                                <button class="action-btn text-red-500 mx-1" onclick="rejectMission('M0003')">❌</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 px-4 border-b border-gray-200">M0004</td>
+                            <td class="py-3 px-4 border-b border-gray-200">MUKEBA-HARCHIES</td>
+                            <td class="py-3 px-4 border-b border-gray-200">Rue du Colâ</td>
+                            <td class="py-3 px-4 border-b border-gray-200">Courses à domicile</td>
+                            <td class="py-3 px-4 border-b border-gray-200">02/07/2025</td>
+                            <td class="py-3 px-4 border-b border-gray-200">12h00</td>
+                            <td class="py-3 px-4 border-b border-gray-200 text-center">
+                                <button class="action-btn text-green-500 mx-1" onclick="validateMission('M0004')">✅</button>
+                                <button class="action-btn text-red-500 mx-1" onclick="rejectMission('M0004')">❌</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 px-4 border-b border-gray-200">M0005</td>
+                            <td class="py-3 px-4 border-b border-gray-200">MUKEBA-HARCHIES</td>
+                            <td class="py-3 px-4 border-b border-gray-200">Rue du Colâ</td>
+                            <td class="py-3 px-4 border-b border-gray-200">Courses à domicile</td>
+                            <td class="py-3 px-4 border-b border-gray-200">02/07/2025</td>
+                            <td class="py-3 px-4 border-b border-gray-200">12h00</td>
+                            <td class="py-3 px-4 border-b border-gray-200 text-center">
+                                <button class="action-btn text-green-500 mx-1" onclick="validateMission('M0005')">✅</button>
+                                <button class="action-btn text-red-500 mx-1" onclick="rejectMission('M0005')">❌</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 px-4 border-b border-gray-200">M0006</td>
+                            <td class="py-3 px-4 border-b border-gray-200">MUKEBA-HARCHIES</td>
+                            <td class="py-3 px-4 border-b border-gray-200">Rue du Colâ</td>
+                            <td class="py-3 px-4 border-b border-gray-200">Aide ménagère</td>
+                            <td class="py-3 px-4 border-b border-gray-200">05/07/2025</td>
+                            <td class="py-3 px-4 border-b border-gray-200">11h01</td>
+                            <td class="py-3 px-4 border-b border-gray-200 text-center">
+                                <button class="action-btn text-green-500 mx-1" onclick="validateMission('M0006')">✅</button>
+                                <button class="action-btn text-red-500 mx-1" onclick="rejectMission('M0006')">❌</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 px-4 border-b border-gray-200">M0007</td>
+                            <td class="py-3 px-4 border-b border-gray-200">MUKEBA-HARCHIES</td>
+                            <td class="py-3 px-4 border-b border-gray-200">Rue du Colâ</td>
+                            <td class="py-3 px-4 border-b border-gray-200">Aide ménagère</td>
+                            <td class="py-3 px-4 border-b border-gray-200">12/07/2025</td>
+                            <td class="py-3 px-4 border-b border-gray-200">11h01</td>
+                            <td class="py-3 px-4 border-b border-gray-200 text-center">
+                                <button class="action-btn text-green-500 mx-1" onclick="validateMission('M0007')">✅</button>
+                                <button class="action-btn text-red-500 mx-1" onclick="rejectMission('M0007')">❌</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 px-4 border-b border-gray-200">M0008</td>
+                            <td class="py-3 px-4 border-b border-gray-200">MUKEBA-HARCHIES</td>
+                            <td class="py-3 px-4 border-b border-gray-200">Rue du Colâ</td>
+                            <td class="py-3 px-4 border-b border-gray-200">Aide ménagère</td>
+                            <td class="py-3 px-4 border-b border-gray-200">05/07/2025</td>
+                            <td class="py-3 px-4 border-b border-gray-200">11h01</td>
+                            <td class="py-3 px-4 border-b border-gray-200 text-center">
+                                <button class="action-btn text-green-500 mx-1" onclick="validateMission('M0008')">✅</button>
+                                <button class="action-btn text-red-500 mx-1" onclick="rejectMission('M0008')">❌</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Missions à venir -->
+        <div class="mb-12">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-6 section-title upcoming">Missions à venir</h2>
+            <div class="overflow-x-auto">
+                <table class="mission-table">
+                    <thead>
+                        <tr>
+                            <th class="py-3 px-4 text-left header-upcoming">ID</th>
+                            <th class="py-3 px-4 text-left header-upcoming">Client</th>
+                            <th class="py-3 px-4 text-left header-upcoming">Adresse</th>
+                            <th class="py-3 px-4 text-left header-upcoming">Service</th>
+                            <th class="py-3 px-4 text-left header-upcoming">Date</th>
+                            <th class="py-3 px-4 text-left header-upcoming">Heure</th>
+                            <th class="py-3 px-4 text-center header-upcoming">Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="py-10 px-4 text-center text-gray-500" colspan="7">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <p class="text-lg font-medium">Aucune mission à venir</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Missions terminées -->
+        <div>
+            <h2 class="text-2xl font-semibold text-gray-700 mb-6 section-title completed">Missions terminées</h2>
+            <div class="overflow-x-auto">
+                <table class="mission-table">
+                    <thead>
+                        <tr>
+                            <th class="py-3 px-4 text-left header-completed">ID</th>
+                            <th class="py-3 px-4 text-left header-completed">Client</th>
+                            <th class="py-3 px-4 text-left header-completed">Adresse</th>
+                            <th class="py-3 px-4 text-left header-completed">Service</th>
+                            <th class="py-3 px-4 text-left header-completed">Date</th>
+                            <th class="py-3 px-4 text-left header-completed">Heure</th>
+                            <th class="py-3 px-4 text-center header-completed">Résultat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="py-10 px-4 text-center text-gray-500" colspan="7">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p class="text-lg font-medium">Aucune mission terminée</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Données Personnelles -->
+    <div id="personalDataModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Mes données personnelles</h2>
+                <button class="text-gray-500 hover:text-gray-700" onclick="closeModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <form id="personalDataForm">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="firstName" class="form-label">Prénom</label>
+                        <input type="text" id="firstName" name="firstName" class="form-input" value="Jean" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lastName" class="form-label">Nom</label>
+                        <input type="text" id="lastName" name="lastName" class="form-input" value="MUKEBA-HARCHIES" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="address" class="form-label">Adresse</label>
+                    <input type="text" id="address" name="address" class="form-input" value="Rue du Colâ" required>
+                </div>
+                <div class="form-group">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" id="email" name="email" class="form-input" value="jean.mukeba@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="phone" class="form-label">Téléphone</label>
+                    <input type="tel" id="phone" name="phone" class="form-input" value="0123456789" required>
+                </div>
+                <hr class="my-6 border-gray-300">
+                <h3 class="text-lg font-semibold mb-4">Changer le mot de passe</h3>
+                <div class="form-group">
+                    <label for="currentPassword" class="form-label">Mot de passe actuel</label>
+                    <input type="password" id="currentPassword" name="currentPassword" class="form-input">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label for="newPassword" class="form-label">Nouveau mot de passe</label>
+                        <input type="password" id="newPassword" name="newPassword" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword" class="form-label">Confirmer le mot de passe</label>
+                        <input type="password" id="confirmPassword" name="confirmPassword" class="form-input">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-4 mt-6">
+                    <button type="button" class="btn-secondary" onclick="closeModal()">Annuler</button>
+                    <button type="submit" class="btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Fonctions pour gérer les actions sur les missions
+        function validateMission(id) {
+            // Afficher une notification
+            showNotification(`Mission ${id} validée avec succès`, 'success');
+            
+            // Dans une application réelle, vous enverriez une requête au serveur
+            console.log(`Mission ${id} validée`);
+            
+            // Pour la démo, on peut supprimer la ligne du tableau après un court délai
+            setTimeout(() => {
+                const rows = document.querySelectorAll('tbody tr');
+                for (let row of rows) {
+                    if (row.querySelector('td') && row.querySelector('td').textContent === id) {
+                        row.classList.add('bg-green-100');
+                        setTimeout(() => {
+                            row.style.transition = "opacity 0.5s, transform 0.5s";
+                            row.style.opacity = "0";
+                            row.style.transform = "translateX(20px)";
+                            setTimeout(() => {
+                                row.remove();
+                                checkEmptyTable();
+                            }, 500);
+                        }, 300);
+                        break;
+                    }
+                }
+            }, 300);
+        }
+        
+        function rejectMission(id) {
+            // Afficher une notification
+            showNotification(`Mission ${id} rejetée`, 'error');
+            
+            // Dans une application réelle, vous enverriez une requête au serveur
+            console.log(`Mission ${id} rejetée`);
+            
+            // Pour la démo, on peut supprimer la ligne du tableau après un court délai
+            setTimeout(() => {
+                const rows = document.querySelectorAll('tbody tr');
+                for (let row of rows) {
+                    if (row.querySelector('td') && row.querySelector('td').textContent === id) {
+                        row.classList.add('bg-red-100');
+                        setTimeout(() => {
+                            row.style.transition = "opacity 0.5s, transform 0.5s";
+                            row.style.opacity = "0";
+                            row.style.transform = "translateX(20px)";
+                            setTimeout(() => {
+                                row.remove();
+                                checkEmptyTable();
+                            }, 500);
+                        }, 300);
+                        break;
+                    }
+                }
+            }, 300);
+        }
+        
+        function checkEmptyTable() {
+            const validateTable = document.querySelector('table:nth-of-type(1)');
+            const validateTbody = validateTable.querySelector('tbody');
+            
+            if (validateTbody.children.length === 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = `
+                    <td class="py-10 px-4 text-center text-gray-500" colspan="7">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p class="text-lg font-medium">Aucune mission à valider</p>
+                    </td>
+                `;
+                validateTbody.appendChild(emptyRow);
+            }
+        }
+        
+        function showNotification(message, type) {
+            // Créer l'élément de notification
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} transition-all duration-300 transform translate-x-full opacity-0 z-50`;
+            notification.textContent = message;
+            
+            // Ajouter au DOM
+            document.body.appendChild(notification);
+            
+            // Afficher avec animation
+            setTimeout(() => {
+                notification.classList.remove('translate-x-full', 'opacity-0');
+            }, 10);
+            
+            // Masquer et supprimer après 3 secondes
+            setTimeout(() => {
+                notification.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 3000);
+        }
+        
+        // Gestion de la modale
+        const modal = document.getElementById('personalDataModal');
+        const btnPersonalData = document.getElementById('btnPersonalData');
+        const btnLogout = document.getElementById('btnLogout');
+        const personalDataForm = document.getElementById('personalDataForm');
+        
+        btnPersonalData.addEventListener('click', () => {
+            modal.style.display = 'block';
+        });
+        
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+        
+        // Fermer la modale si on clique en dehors
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+        
+        // Gestion du formulaire
+        personalDataForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            // Vérification des mots de passe
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (newPassword && newPassword !== confirmPassword) {
+                showNotification('Les mots de passe ne correspondent pas', 'error');
+                return;
+            }
+            
+            // Simuler l'enregistrement des données
+            showNotification('Données personnelles mises à jour avec succès', 'success');
+            closeModal();
+        });
+        
+        // Gestion de la déconnexion
+        btnLogout.addEventListener('click', () => {
+            if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
+                showNotification('Déconnexion en cours...', 'success');
+                setTimeout(() => {
+                    // Dans une application réelle, redirection vers la page de connexion
+                    window.location.href = '#';
+                }, 1500);
+            }
+        });
+    </script>
+</body>
+</html>
