@@ -1,771 +1,1297 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tableau des Missions</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: transparent;
-            margin: 0;
-            padding: 0;
-        }
-        .mission-table {
-            border-collapse: separate;
-            border-spacing: 0;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            width: 100%;
-        }
-        .mission-table tr:nth-child(even) {
-            background-color: #f8fafc;
-        }
-        .mission-table tr:nth-child(odd) {
-            background-color: #ffffff;
-        }
-        .mission-table tr:hover {
-            background-color: #e0e7ff;
-        }
-        .action-btn {
-            transition: transform 0.2s;
-        }
-        .action-btn:hover {
-            transform: scale(1.2);
-        }
-        .section-title {
-            position: relative;
-            display: inline-block;
-        }
-        .section-title:after {
-            content: '';
-            position: absolute;
-            width: 60%;
-            height: 3px;
-            bottom: -8px;
-            left: 0;
-        }
-        .section-title.validate:after {
-            background-color: #3b82f6;
-        }
-        .section-title.upcoming:after {
-            background-color: #f59e0b;
-        }
-        .section-title.completed:after {
-            background-color: #10b981;
-        }
-        .header-validate {
-            background-color: #3b82f6;
-            color: white;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            letter-spacing: 0.5px;
-        }
-        .header-upcoming {
-            background-color: #f59e0b;
-            color: white;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            letter-spacing: 0.5px;
-        }
-        .header-completed {
-            background-color: #10b981;
-            color: white;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            letter-spacing: 0.5px;
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 100;
-            overflow: auto;
-            animation: fadeIn 0.3s;
-        }
-        .modal-content {
-            background-color: #fff;
-            margin: 10% auto;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            width: 80%;
-            max-width: 600px;
-            animation: slideIn 0.3s;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        @keyframes slideIn {
-            from { transform: translateY(-50px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        .form-label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: #374151;
-        }
-        .form-input {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.375rem;
-            font-size: 1rem;
-            transition: border-color 0.15s ease-in-out;
-        }
-        .form-input:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
-        }
-        .btn-primary {
-            background-color: #3b82f6;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.375rem;
-            font-weight: 500;
-            transition: background-color 0.15s ease-in-out;
-            cursor: pointer;
-        }
-        .btn-primary:hover {
-            background-color: #2563eb;
-        }
-        .btn-secondary {
-            background-color: #9ca3af;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.375rem;
-            font-weight: 500;
-            transition: background-color 0.15s ease-in-out;
-            cursor: pointer;
-        }
-        .btn-secondary:hover {
-            background-color: #6b7280;
-        }
-        .btn-danger {
-            background-color: #ef4444;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.375rem;
-            font-weight: 500;
-            transition: background-color 0.15s ease-in-out;
-            cursor: pointer;
-        }
-        .btn-danger:hover {
-            background-color: #dc2626;
-        }
-        .container {
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 1rem;
-        }
-        .overflow-x-auto {
-            overflow-x: auto;
-        }
-        .flex {
-            display: flex;
-        }
-        .justify-between {
-            justify-content: space-between;
-        }
-        .items-center {
-            align-items: center;
-        }
-        .mb-8 {
-            margin-bottom: 2rem;
-        }
-        .mb-6 {
-            margin-bottom: 1.5rem;
-        }
-        .mb-12 {
-            margin-bottom: 3rem;
-        }
-        .space-x-4 > * + * {
-            margin-left: 1rem;
-        }
-        .text-3xl {
-            font-size: 1.875rem;
-        }
-        .text-2xl {
-            font-size: 1.5rem;
-        }
-        .font-bold {
-            font-weight: 700;
-        }
-        .font-semibold {
-            font-weight: 600;
-        }
-        .text-gray-800 {
-            color: #1f2937;
-        }
-        .text-gray-700 {
-            color: #374151;
-        }
-        .text-gray-500 {
-            color: #6b7280;
-        }
-        .text-center {
-            text-align: center;
-        }
-        .text-left {
-            text-align: left;
-        }
-        .py-3 {
-            padding-top: 0.75rem;
-            padding-bottom: 0.75rem;
-        }
-        .px-4 {
-            padding-left: 1rem;
-            padding-right: 1rem;
-        }
-        .py-10 {
-            padding-top: 2.5rem;
-            padding-bottom: 2.5rem;
-        }
-        .border-b {
-            border-bottom-width: 1px;
-        }
-        .border-gray-200 {
-            border-color: #e5e7eb;
-        }
-        .mx-1 {
-            margin-left: 0.25rem;
-            margin-right: 0.25rem;
-        }
-        .mr-2 {
-            margin-right: 0.5rem;
-        }
-        .h-5, .w-5 {
-            height: 1.25rem;
-            width: 1.25rem;
-        }
-        .h-6, .w-6 {
-            height: 1.5rem;
-            width: 1.5rem;
-        }
-        .h-12, .w-12 {
-            height: 3rem;
-            width: 3rem;
-        }
-        .mx-auto {
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .mb-3 {
-            margin-bottom: 0.75rem;
-        }
-        .text-lg {
-            font-size: 1.125rem;
-        }
-        .font-medium {
-            font-weight: 500;
-        }
-        .text-green-500 {
-            color: #10b981;
-        }
-        .text-red-500 {
-            color: #ef4444;
-        }
-        .text-gray-400 {
-            color: #9ca3af;
-        }
-        .grid {
-            display: grid;
-        }
-        .grid-cols-1 {
-            grid-template-columns: repeat(1, minmax(0, 1fr));
-        }
-        .gap-4 {
-            gap: 1rem;
-        }
-        .my-6 {
-            margin-top: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        .border-gray-300 {
-            border-color: #d1d5db;
-        }
-        .text-lg {
-            font-size: 1.125rem;
-        }
-        .mb-4 {
-            margin-bottom: 1rem;
-        }
-        .justify-end {
-            justify-content: flex-end;
-        }
-        .mt-6 {
-            margin-top: 1.5rem;
-        }
-        .fixed {
-            position: fixed;
-        }
-        .top-4 {
-            top: 1rem;
-        }
-        .right-4 {
-            right: 1rem;
-        }
-        .rounded-lg {
-            border-radius: 0.5rem;
-        }
-        .shadow-lg {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        .bg-green-500 {
-            background-color: #10b981;
-        }
-        .bg-red-500 {
-            background-color: #ef4444;
-        }
-        .transition-all {
-            transition-property: all;
-        }
-        .duration-300 {
-            transition-duration: 300ms;
-        }
-        .transform {
-            transform: translateX(0);
-        }
-        .translate-x-full {
-            transform: translateX(100%);
-        }
-        .opacity-0 {
-            opacity: 0;
-        }
-        .z-50 {
-            z-index: 50;
-        }
-        
-        @media (min-width: 768px) {
-            .md\:grid-cols-2 {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-800">Gestion des Missions</h1>
-            <div class="flex space-x-4">
-                <button id="btnPersonalData" class="btn-primary flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
-                    </svg>
-                    Données personnelles
-                </button>
-                <button id="btnLogout" class="btn-danger flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm7 4a1 1 0 10-2 0v4a1 1 0 102 0V7zm1 4a1 1 0 102 0V7a1 1 0 10-2 0v4z" clip-rule="evenodd" />
-                        <path d="M13 7a1 1 0 100-2h-2a1 1 0 000 2h2zm-2 6a1 1 0 100 2h2a1 1 0 100-2h-2z" />
-                    </svg>
-                    Déconnexion
-                </button>
-            </div>
-        </div>
-        
-        <!-- Missions à valider -->
-        <div class="mb-12">
-            <h2 class="text-2xl font-semibold text-gray-700 mb-6 section-title validate">Missions à valider</h2>
-            <div class="overflow-x-auto">
-                <table class="mission-table">
-                    <thead>
-                        <tr>
-                            <th class="py-3 px-4 text-left header-validate">ID</th>
-                            <th class="py-3 px-4 text-left header-validate">Client</th>
-                            <th class="py-3 px-4 text-left header-validate">Adresse</th>
-                            <th class="py-3 px-4 text-left header-validate">Service</th>
-                            <th class="py-3 px-4 text-left header-validate">Date</th>
-                            <th class="py-3 px-4 text-left header-validate">Heure</th>
-                            <th class="py-3 px-4 text-center header-validate">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="py-3 px-4 border-b border-gray-200">M0001</td>
-                            <td class="py-3 px-4 border-b border-gray-200">MUKEBA-HARCHIES</td>
-                            <td class="py-3 px-4 border-b border-gray-200">Rue du Colâ</td>
-                            <td class="py-3 px-4 border-b border-gray-200">Assistance / Secours</td>
-                            <td class="py-3 px-4 border-b border-gray-200">02/07/2025</td>
-                            <td class="py-3 px-4 border-b border-gray-200">18h00</td>
-                            <td class="py-3 px-4 border-b border-gray-200 text-center">
-                                <button class="action-btn text-green-500 mx-1" onclick="validateMission('M0001')">✅</button>
-                                <button class="action-btn text-red-500 mx-1" onclick="rejectMission('M0001')">❌</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="py-3 px-4 border-b border-gray-200">M0002</td>
-                            <td class="py-3 px-4 border-b border-gray-200">MUKEBA-HARCHIES</td>
-                            <td class="py-3 px-4 border-b border-gray-200">Rue du Colâ</td>
-                            <td class="py-3 px-4 border-b border-gray-200">Courses à domicile</td>
-                            <td class="py-3 px-4 border-b border-gray-200">02/07/2025</td>
-                            <td class="py-3 px-4 border-b border-gray-200">12h00</td>
-                            <td class="py-3 px-4 border-b border-gray-200 text-center">
-                                <button class="action-btn text-green-500 mx-1" onclick="validateMission('M0002')">✅</button>
-                                <button class="action-btn text-red-500 mx-1" onclick="rejectMission('M0002')">❌</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="py-3 px-4 border-b border-gray-200">M0003</td>
-                            <td class="py-3 px-4 border-b border-gray-200">MUKEBA-HARCHIES</td>
-                            <td class="py-3 px-4 border-b border-gray-200">Rue du Colâ</td>
-                            <td class="py-3 px-4 border-b border-gray-200">Courses à domicile</td>
-                            <td class="py-3 px-4 border-b border-gray-200">02/07/2025</td>
-                            <td class="py-3 px-4 border-b border-gray-200">12h00</td>
-                            <td class="py-3 px-4 border-b border-gray-200 text-center">
-                                <button class="action-btn text-green-500 mx-1" onclick="validateMission('M0003')">✅</button>
-                                <button class="action-btn text-red-500 mx-1" onclick="rejectMission('M0003')">❌</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="py-3 px-4 border-b border-gray-200">M0004</td>
-                            <td class="py-3 px-4 border-b border-gray-200">MUKEBA-HARCHIES</td>
-                            <td class="py-3 px-4 border-b border-gray-200">Rue du Colâ</td>
-                            <td class="py-3 px-4 border-b border-gray-200">Courses à domicile</td>
-                            <td class="py-3 px-4 border-b border-gray-200">02/07/2025</td>
-                            <td class="py-3 px-4 border-b border-gray-200">12h00</td>
-                            <td class="py-3 px-4 border-b border-gray-200 text-center">
-                                <button class="action-btn text-green-500 mx-1" onclick="validateMission('M0004')">✅</button>
-                                <button class="action-btn text-red-500 mx-1" onclick="rejectMission('M0004')">❌</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="py-3 px-4 border-b border-gray-200">M0005</td>
-                            <td class="py-3 px-4 border-b border-gray-200">MUKEBA-HARCHIES</td>
-                            <td class="py-3 px-4 border-b border-gray-200">Rue du Colâ</td>
-                            <td class="py-3 px-4 border-b border-gray-200">Courses à domicile</td>
-                            <td class="py-3 px-4 border-b border-gray-200">02/07/2025</td>
-                            <td class="py-3 px-4 border-b border-gray-200">12h00</td>
-                            <td class="py-3 px-4 border-b border-gray-200 text-center">
-                                <button class="action-btn text-green-500 mx-1" onclick="validateMission('M0005')">✅</button>
-                                <button class="action-btn text-red-500 mx-1" onclick="rejectMission('M0005')">❌</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="py-3 px-4 border-b border-gray-200">M0006</td>
-                            <td class="py-3 px-4 border-b border-gray-200">MUKEBA-HARCHIES</td>
-                            <td class="py-3 px-4 border-b border-gray-200">Rue du Colâ</td>
-                            <td class="py-3 px-4 border-b border-gray-200">Aide ménagère</td>
-                            <td class="py-3 px-4 border-b border-gray-200">05/07/2025</td>
-                            <td class="py-3 px-4 border-b border-gray-200">11h01</td>
-                            <td class="py-3 px-4 border-b border-gray-200 text-center">
-                                <button class="action-btn text-green-500 mx-1" onclick="validateMission('M0006')">✅</button>
-                                <button class="action-btn text-red-500 mx-1" onclick="rejectMission('M0006')">❌</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="py-3 px-4 border-b border-gray-200">M0007</td>
-                            <td class="py-3 px-4 border-b border-gray-200">MUKEBA-HARCHIES</td>
-                            <td class="py-3 px-4 border-b border-gray-200">Rue du Colâ</td>
-                            <td class="py-3 px-4 border-b border-gray-200">Aide ménagère</td>
-                            <td class="py-3 px-4 border-b border-gray-200">12/07/2025</td>
-                            <td class="py-3 px-4 border-b border-gray-200">11h01</td>
-                            <td class="py-3 px-4 border-b border-gray-200 text-center">
-                                <button class="action-btn text-green-500 mx-1" onclick="validateMission('M0007')">✅</button>
-                                <button class="action-btn text-red-500 mx-1" onclick="rejectMission('M0007')">❌</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="py-3 px-4 border-b border-gray-200">M0008</td>
-                            <td class="py-3 px-4 border-b border-gray-200">MUKEBA-HARCHIES</td>
-                            <td class="py-3 px-4 border-b border-gray-200">Rue du Colâ</td>
-                            <td class="py-3 px-4 border-b border-gray-200">Aide ménagère</td>
-                            <td class="py-3 px-4 border-b border-gray-200">05/07/2025</td>
-                            <td class="py-3 px-4 border-b border-gray-200">11h01</td>
-                            <td class="py-3 px-4 border-b border-gray-200 text-center">
-                                <button class="action-btn text-green-500 mx-1" onclick="validateMission('M0008')">✅</button>
-                                <button class="action-btn text-red-500 mx-1" onclick="rejectMission('M0008')">❌</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        
-        <!-- Missions à venir -->
-        <div class="mb-12">
-            <h2 class="text-2xl font-semibold text-gray-700 mb-6 section-title upcoming">Missions à venir</h2>
-            <div class="overflow-x-auto">
-                <table class="mission-table">
-                    <thead>
-                        <tr>
-                            <th class="py-3 px-4 text-left header-upcoming">ID</th>
-                            <th class="py-3 px-4 text-left header-upcoming">Client</th>
-                            <th class="py-3 px-4 text-left header-upcoming">Adresse</th>
-                            <th class="py-3 px-4 text-left header-upcoming">Service</th>
-                            <th class="py-3 px-4 text-left header-upcoming">Date</th>
-                            <th class="py-3 px-4 text-left header-upcoming">Heure</th>
-                            <th class="py-3 px-4 text-center header-upcoming">Statut</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="py-10 px-4 text-center text-gray-500" colspan="7">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                <p class="text-lg font-medium">Aucune mission à venir</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        
-        <!-- Missions terminées -->
-        <div>
-            <h2 class="text-2xl font-semibold text-gray-700 mb-6 section-title completed">Missions terminées</h2>
-            <div class="overflow-x-auto">
-                <table class="mission-table">
-                    <thead>
-                        <tr>
-                            <th class="py-3 px-4 text-left header-completed">ID</th>
-                            <th class="py-3 px-4 text-left header-completed">Client</th>
-                            <th class="py-3 px-4 text-left header-completed">Adresse</th>
-                            <th class="py-3 px-4 text-left header-completed">Service</th>
-                            <th class="py-3 px-4 text-left header-completed">Date</th>
-                            <th class="py-3 px-4 text-left header-completed">Heure</th>
-                            <th class="py-3 px-4 text-center header-completed">Résultat</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="py-10 px-4 text-center text-gray-500" colspan="7">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <p class="text-lg font-medium">Aucune mission terminée</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+Embed 1
+<div class="viiveo-login">
+<form onsubmit="event.preventDefault(); login();">
+<input type="email" id="email" placeholder="E-mail" required />
+<input type="password" id="password" placeholder="Mot de passe" required />
+<button type="submit">Connexion</button>
+<div id="message" style="color:red; margin-top:0.5em;"></div>
+</form>
+</div>
 
-    <!-- Modal Données Personnelles -->
-    <div id="personalDataModal" class="modal">
-        <div class="modal-content">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">Mes données personnelles</h2>
-                <button class="text-gray-500 hover:text-gray-700" onclick="closeModal()">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            <form id="personalDataForm">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="form-group">
-                        <label for="firstName" class="form-label">Prénom</label>
-                        <input type="text" id="firstName" name="firstName" class="form-input" value="Jean" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="lastName" class="form-label">Nom</label>
-                        <input type="text" id="lastName" name="lastName" class="form-input" value="MUKEBA-HARCHIES" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="address" class="form-label">Adresse</label>
-                    <input type="text" id="address" name="address" class="form-input" value="Rue du Colâ" required>
-                </div>
-                <div class="form-group">
-                    <label for="email" class="form-label">Email</label>
-                    <input type="email" id="email" name="email" class="form-input" value="jean.mukeba@example.com" required>
-                </div>
-                <div class="form-group">
-                    <label for="phone" class="form-label">Téléphone</label>
-                    <input type="tel" id="phone" name="phone" class="form-input" value="0123456789" required>
-                </div>
-                <hr class="my-6 border-gray-300">
-                <h3 class="text-lg font-semibold mb-4">Changer le mot de passe</h3>
-                <div class="form-group">
-                    <label for="currentPassword" class="form-label">Mot de passe actuel</label>
-                    <input type="password" id="currentPassword" name="currentPassword" class="form-input">
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="form-group">
-                        <label for="newPassword" class="form-label">Nouveau mot de passe</label>
-                        <input type="password" id="newPassword" name="newPassword" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label for="confirmPassword" class="form-label">Confirmer le mot de passe</label>
-                        <input type="password" id="confirmPassword" name="confirmPassword" class="form-input">
-                    </div>
-                </div>
-                <div class="flex justify-end space-x-4 mt-6">
-                    <button type="button" class="btn-secondary" onclick="closeModal()">Annuler</button>
-                    <button type="submit" class="btn-primary">Enregistrer</button>
-                </div>
-            </form>
-        </div>
-    </div>
+<div class="viiveo-loader" style="display:none;">Chargement...</div>
 
-    <script>
-        // Fonctions pour gérer les actions sur les missions
-        function validateMission(id) {
-            // Afficher une notification
-            showNotification(`Mission ${id} validée avec succès`, 'success');
-            
-            // Dans une application réelle, vous enverriez une requête au serveur
-            console.log(`Mission ${id} validée`);
-            
-            // Pour la démo, on peut supprimer la ligne du tableau après un court délai
-            setTimeout(() => {
-                const rows = document.querySelectorAll('tbody tr');
-                for (let row of rows) {
-                    if (row.querySelector('td') && row.querySelector('td').textContent === id) {
-                        row.classList.add('bg-green-100');
-                        setTimeout(() => {
-                            row.style.transition = "opacity 0.5s, transform 0.5s";
-                            row.style.opacity = "0";
-                            row.style.transform = "translateX(20px)";
-                            setTimeout(() => {
-                                row.remove();
-                                checkEmptyTable();
-                            }, 500);
-                        }, 300);
-                        break;
-                    }
-                }
-            }, 300);
-        }
-        
-        function rejectMission(id) {
-            // Afficher une notification
-            showNotification(`Mission ${id} rejetée`, 'error');
-            
-            // Dans une application réelle, vous enverriez une requête au serveur
-            console.log(`Mission ${id} rejetée`);
-            
-            // Pour la démo, on peut supprimer la ligne du tableau après un court délai
-            setTimeout(() => {
-                const rows = document.querySelectorAll('tbody tr');
-                for (let row of rows) {
-                    if (row.querySelector('td') && row.querySelector('td').textContent === id) {
-                        row.classList.add('bg-red-100');
-                        setTimeout(() => {
-                            row.style.transition = "opacity 0.5s, transform 0.5s";
-                            row.style.opacity = "0";
-                            row.style.transform = "translateX(20px)";
-                            setTimeout(() => {
-                                row.remove();
-                                checkEmptyTable();
-                            }, 500);
-                        }, 300);
-                        break;
-                    }
-                }
-            }, 300);
-        }
-        
-        function checkEmptyTable() {
-            const validateTable = document.querySelector('table:nth-of-type(1)');
-            const validateTbody = validateTable.querySelector('tbody');
-            
-            if (validateTbody.children.length === 0) {
-                const emptyRow = document.createElement('tr');
-                emptyRow.innerHTML = `
-                    <td class="py-10 px-4 text-center text-gray-500" colspan="7">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <p class="text-lg font-medium">Aucune mission à valider</p>
-                    </td>
-                `;
-                validateTbody.appendChild(emptyRow);
-            }
-        }
-        
-        function showNotification(message, type) {
-            // Créer l'élément de notification
-            const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} transition-all duration-300 transform translate-x-full opacity-0 z-50`;
-            notification.textContent = message;
-            
-            // Ajouter au DOM
-            document.body.appendChild(notification);
-            
-            // Afficher avec animation
-            setTimeout(() => {
-                notification.classList.remove('translate-x-full', 'opacity-0');
-            }, 10);
-            
-            // Masquer et supprimer après 3 secondes
-            setTimeout(() => {
-                notification.classList.add('translate-x-full', 'opacity-0');
-                setTimeout(() => {
-                    notification.remove();
-                }, 300);
-            }, 3000);
-        }
-        
-        // Gestion de la modale
-        const modal = document.getElementById('personalDataModal');
-        const btnPersonalData = document.getElementById('btnPersonalData');
-        const btnLogout = document.getElementById('btnLogout');
-        const personalDataForm = document.getElementById('personalDataForm');
-        
-        btnPersonalData.addEventListener('click', () => {
-            modal.style.display = 'block';
-        });
-        
-        function closeModal() {
-            modal.style.display = 'none';
-        }
-        
-        // Fermer la modale si on clique en dehors
-        window.addEventListener('click', (event) => {
-            if (event.target === modal) {
-                closeModal();
-            }
-        });
-        
-        // Gestion du formulaire
-        personalDataForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            // Vérification des mots de passe
-            const newPassword = document.getElementById('newPassword').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            
-            if (newPassword && newPassword !== confirmPassword) {
-                showNotification('Les mots de passe ne correspondent pas', 'error');
-                return;
-            }
-            
-            // Simuler l'enregistrement des données
-            showNotification('Données personnelles mises à jour avec succès', 'success');
-            closeModal();
-        });
-        
-        // Gestion de la déconnexion
-        btnLogout.addEventListener('click', () => {
-            if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
-                showNotification('Déconnexion en cours...', 'success');
-                setTimeout(() => {
-                    // Dans une application réelle, redirection vers la page de connexion
-                    window.location.href = '#';
-                }, 1500);
-            }
-        });
-    </script>
-</body>
-</html>
+<div class="viiveo-missions" style="display:none;">
+<h3>Missions à valider</h3>
+<div id="missions-attente"></div>
+
+<h3>Missions à venir</h3>
+<div id="missions-a-venir"></div>
+
+<h3>Missions terminées</h3>
+<div id="missions-terminees"></div>
+</div>
+
+Embed 2 
+<style>
+html, body {
+height: 100%;
+margin: 0;
+padding: 0;
+font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+background: transparent;
+}
+
+#background-wrapper {
+position: fixed;
+top: 0; left: 0; right: 0; bottom: 0;
+background-image: url('https://i.postimg.cc/7LX7CrC9/bkg-viive-cl.png');
+background-size: cover;
+background-position: center;
+filter: brightness(0.85);
+z-index: -1;
+}
+
+#container {
+min-height: 100vh;
+display: flex;
+flex-direction: column;
+align-items: center;
+padding: 20px;
+}
+
+/* Connexion */
+#login {
+background: rgba(255, 255, 255, 0.92);
+padding: 30px 40px;
+border-radius: 12px;
+box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+max-width: 500px;
+width: 90%;
+box-sizing: border-box;
+text-align: center;
+}
+
+#login h2 {
+font-size: 2.4em;
+font-weight: 700;
+color: #B58F0A;
+}
+
+#login button {
+background-color: #B58F0A;
+color: white;
+padding: 12px 20px;
+border: none;
+border-radius: 10px;
+font-size: 16px;
+cursor: pointer;
+margin-top: 10px;
+width: 50%;
+outline: none;
+}
+
+#login button:hover {
+background-color: #9b7606;
+}
+
+input[type="email"], input[type="password"] {
+width: 100%;
+padding: 14px;
+margin-bottom: 20px;
+border: 1.8px solid #ccc;
+border-radius: 8px;
+font-size: 16px;
+box-sizing: border-box;
+}
+
+/* Messages */
+#message {
+color: #d32f2f;
+font-weight: 600;
+min-height: 20px;
+margin-top: 10px;
+text-align: center;
+}
+
+/* Modale missions */
+#missions-modal {
+background: rgba(255, 255, 255, 0.92);
+padding: 30px 40px;
+border-radius: 12px;
+box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+width: 90%;
+max-width: 930px;
+margin: 20px auto;
+box-sizing: border-box;
+}
+
+#missions-modal h2 {
+font-size: 2em;
+font-weight: 700;
+color: #B58F0A;
+margin-bottom: 20px;
+text-align: center;
+}
+
+/* Tableaux de missions améliorés */
+.missions-table {
+width: 100%;
+border-collapse: separate;
+border-spacing: 0;
+font-size: 16px;
+table-layout: fixed;
+border-radius: 10px;
+overflow: hidden;
+box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+margin-bottom: 30px;
+}
+
+.missions-table thead th {
+background: linear-gradient(135deg, #ECA8CF 0%, #D87FB8 100%);
+color: white;
+font-weight: 600;
+padding: 14px 10px;
+border: none;
+text-align: center;
+text-transform: uppercase;
+font-size: 14px;
+letter-spacing: 0.5px;
+}
+
+.missions-table tbody td {
+padding: 14px 10px;
+border: none;
+border-bottom: 1px solid #eaeaea;
+text-align: center;
+background-color: white;
+transition: background-color 0.2s;
+}
+
+.missions-table tbody tr:last-child td {
+border-bottom: none;
+}
+
+.missions-table tbody tr:hover td {
+background-color: #f9f4e8;
+}
+
+/* Styles selon le statut */
+.missions-table .status-pending td {
+background-color: #fff9f0;
+}
+
+.missions-table .status-confirmed td {
+background-color: #f0f9ff;
+}
+
+.missions-table .status-validated td {
+background-color: #f0fff4;
+}
+
+.missions-table .status-completed td {
+background-color: #f9f9f9;
+}
+
+/* Badges de statut */
+.status-badge {
+display: inline-block;
+padding: 6px 12px;
+border-radius: 20px;
+font-weight: 600;
+font-size: 14px;
+text-align: center;
+}
+
+.status-badge.validated {
+background-color: #e6f7e6;
+color: #2e7d32;
+}
+
+.status-badge.completed {
+background-color: #f0f0f0;
+color: #616161;
+}
+
+/* Boutons d'action */
+.btn-action {
+width: 40px;
+height: 40px;
+border-radius: 50%;
+border: none;
+cursor: pointer;
+margin: 0 5px;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+transition: transform 0.2s, box-shadow 0.2s;
+box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
+
+.btn-action:hover {
+transform: translateY(-2px);
+box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-validate {
+background-color: #e8f5e9;
+}
+
+.btn-refuse {
+background-color: #ffebee;
+}
+
+.btn-start {
+background-color: #e3f2fd;
+}
+
+.btn-icon {
+font-size: 18px;
+}
+
+.actions {
+display: flex;
+justify-content: center;
+align-items: center;
+gap: 8px;
+}
+
+/* Responsive pour les tableaux */
+@media (max-width: 768px) {
+.missions-table, .missions-table thead, .missions-table tbody, .missions-table th, .missions-table td, .missions-table tr {
+display: block;
+width: 100%;
+}
+
+.missions-table {
+border-radius: 10px;
+overflow: hidden;
+}
+
+.missions-table thead {
+display: none;
+}
+
+.missions-table tbody tr {
+margin-bottom: 20px;
+border-radius: 10px;
+box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+overflow: hidden;
+}
+
+.missions-table td {
+text-align: left;
+padding: 12px 15px;
+position: relative;
+border-bottom: 1px solid #eaeaea;
+}
+
+.missions-table td:last-child {
+border-bottom: none;
+}
+
+.missions-table td::before {
+content: attr(data-label);
+font-weight: bold;
+color: #B58F0A;
+display: block;
+margin-bottom: 6px;
+font-size: 14px;
+}
+
+.actions {
+justify-content: flex-start;
+margin-top: 5px;
+}
+}
+thead th {
+background: #ECA8CF;
+color: white;
+font-weight: bold;
+padding: 10px;
+border: 1px solid #ddd;
+text-align: center;
+}
+
+tbody td {
+padding: 10px;
+border: 1px solid #ddd;
+text-align: center;
+}
+
+/* Boutons */
+.actions button {
+width: 40px;
+height: 36px;
+font-size: 18px;
+background-color: #E0E0E0;
+border: none;
+border-radius: 6px;
+cursor: pointer;
+margin: 2px;
+}
+
+.actions button:hover {
+background-color: #ccc;
+}
+
+.actions {
+display: flex;
+justify-content: center;
+align-items: center;
+gap: 6px;
+}
+
+/* Loader */
+#loader {
+width: 100%;
+max-width: 930px;
+height: 5px;
+background: #ddd;
+border-radius: 3px;
+overflow: hidden;
+margin: 0 auto 20px auto;
+display: none;
+}
+#loader div {
+height: 100%;
+width: 0;
+background: #ECA8CF;
+animation: loadAnim 2s linear infinite;
+}
+@keyframes loadAnim {
+0% {width: 0;}
+50% {width: 80%;}
+100% {width: 0;}
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+table { font-size: 14px; }
+#missions-modal { padding: 20px; }
+#login { padding: 20px; }
+}
+
+/* === Style spécifique Embed 4 : modale Scan QR & fiche observation === */
+
+#modalOverlay {
+position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+background: rgba(0,0,0,0.6);
+display: none;
+justify-content: center;
+align-items: center;
+z-index: 9999;
+padding: 10px;
+overflow-y: auto;
+}
+#modalContent {
+background: white;
+border-radius: 10px;
+padding: 20px;
+width: 100%;
+max-width: 480px;
+max-height: 90vh;
+overflow-y: auto;
+box-sizing: border-box;
+box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+display: flex;
+flex-direction: column;
+}
+
+#qr-reader {
+width: 100% !important;
+height: auto !important;
+aspect-ratio: 1 / 1; /* carré */
+max-height: 350px;
+margin: 0 auto;
+}
+
+label {
+display: block;
+margin-top: 15px;
+font-weight: 600;
+}
+
+input, select, textarea {
+width: 100%;
+padding: 8px;
+margin-top: 5px;
+box-sizing: border-box;
+border: 1.5px solid #ccc;
+border-radius: 6px;
+font-size: 14px;
+}
+
+button {
+margin-top: 20px;
+padding: 12px;
+background-color: #B58F0A;
+color: white;
+border: none;
+border-radius: 10px;
+cursor: pointer;
+font-weight: 700;
+width: 100%;
+}
+button:hover {
+background-color: #9b7606;
+}
+
+#btnCancelQR, #btnCancelForm {
+background: #d32f2f !important;
+margin-top: 10px !important;
+}
+
+#photosPreview img {
+max-width: 80px;
+margin-right: 10px;
+margin-top: 10px;
+border-radius: 6px;
+border: 1px solid #ddd;
+}
+
+/* === Responsive modale === */
+@media (max-width: 600px) {
+#modalContent {
+max-width: 95vw;
+padding: 15px;
+}
+#qr-reader {
+max-height: 250px;
+}
+label {
+font-size: 14px;
+}
+input, select, textarea {
+font-size: 13px;
+}
+button {
+font-size: 15px;
+}
+#photosPreview img {
+max-width: 60px;
+}
+}
+
+@media (max-width: 768px) {
+table, thead, tbody, th, td, tr {
+display: block;
+width: 100%;
+}
+
+thead {
+display: none;
+}
+
+tr {
+margin-bottom: 16px;
+background: #fff;
+border-radius: 10px;
+box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+padding: 10px;
+}
+
+td {
+text-align: left;
+padding: 8px 12px;
+position: relative;
+}
+
+td::before {
+content: attr(data-label);
+font-weight: bold;
+color: #B58F0A;
+display: block;
+margin-bottom: 4px;
+}
+
+.actions {
+text-align: center;
+}
+
+.actions button {
+margin: 4px;
+}
+}
+</style> 
+
+Embed 3 
+<script>
+// 📦 Fonction générique pour appeler une API via JSONP
+function callApiJsonp(url, callbackName) {
+return new Promise((resolve, reject) => {
+// Création de la fonction de callback
+window[callbackName] = function (data) {
+resolve(data);
+delete window[callbackName];
+script.remove();
+};
+
+// Création du <script> pour injecter la requête JSONP
+const script = document.createElement('script');
+script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName;
+script.onerror = () => {
+reject(new Error('Erreur lors du chargement JSONP'));
+delete window[callbackName];
+script.remove();
+};
+
+document.body.appendChild(script);
+});
+}
+
+// 👁️ Fonction utilitaire pour afficher / masquer un élément HTML
+function show(el, visible) {
+if (!el) return;
+el.style.display = visible ? 'block' : 'none';
+}
+
+// 🧼 Fonction pour nettoyer les inputs d’un formulaire
+function clearForm(formElement) {
+if (!formElement) return;
+Array.from(formElement.elements).forEach(el => {
+if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+el.value = '';
+} else if (el.tagName === 'SELECT') {
+el.selectedIndex = 0;
+}
+});
+}
+
+// ⌛ Fonction pour désactiver un bouton temporairement
+function tempDisable(btn, ms = 1000) {
+if (!btn) return;
+btn.disabled = true;
+setTimeout(() => {
+btn.disabled = false;
+}, ms);
+}
+
+// 💡 Fonction pour créer un élément HTML depuis une chaîne HTML
+function createElementFromHTML(htmlString) {
+const div = document.createElement('div');
+div.innerHTML = htmlString.trim();
+return div.firstChild;
+}
+</script>
+
+Embed 4
+<script>
+window.webAppUrl = "https://script.google.com/macros/s/AKfycbzEEZZnZJK1BEXlCk81ogi0Aa7MFGunOkjS5s2CCDIZPSkHq0OtPAcEBLrkXp-fpb8aaQ/exec";
+window.currentEmail = "";
+
+// Si tu as centralisé formatDate, formatTime, estAujourdHui, estFuture dans Embed 0, supprime-les d'ici.
+
+// Loader
+function showLoader(show) {
+let loader = document.getElementById("loader");
+if (!loader) {
+loader = document.createElement("div");
+loader.id = "loader";
+loader.innerHTML = "<div>Chargement...</div>";
+document.getElementById("container")?.appendChild(loader);
+}
+loader.style.display = show ? "block" : "none";
+}
+
+// Login
+async function login() {
+const email = document.getElementById("email")?.value.trim();
+const password = document.getElementById("password")?.value.trim();
+const message = document.getElementById("message");
+if (!email || !password) return message.textContent = "Champs requis.";
+
+try {
+const callbackName = "cbLogin" + Date.now();
+const url = `${webAppUrl}?type=loginPresta&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+const data = await callApiJsonp(url, callbackName);
+if (!data.success) return message.textContent = data.message || "Erreur.";
+
+window.currentEmail = email;
+document.getElementById("login")?.style?.display = "none";
+showLoader(true);
+await loadMissions(email);
+showLoader(false);
+} catch (err) {
+console.error(err);
+message.textContent = "Erreur serveur.";
+}
+}
+
+// Affichage missions
+async function loadMissions(email) {
+const callbackName = "cbMissions" + Date.now();
+const url = `${webAppUrl}?type=missionsPresta&email=${encodeURIComponent(email)}`;
+
+try {
+const missions = await callApiJsonp(url, callbackName);
+const container = document.getElementById("container");
+if (!container) return;
+
+Array.from(container.children).forEach(child => {
+if (child.id !== "loader") container.removeChild(child);
+});
+
+const blocs = [
+{ filtre: m => m.statut === "en attente", titre: "🕓 Missions en attente", actions: true },
+{ filtre: m => m.statut === "confirmée" && estAujourdHui(m.date), titre: "📅 Missions du jour" },
+{ filtre: m => m.statut === "confirmée" && estFuture(m.date), titre: "🔜 Missions planifiées" },
+{ filtre: m => m.statut === "validée", titre: "✅ Missions validées", validee: true },
+{ filtre: m => m.statut === "terminée", titre: "🏁 Missions terminées", validee: true }
+];
+
+let found = false;
+for (const bloc of blocs) {
+const list = missions.filter(bloc.filtre);
+if (list.length) {
+const div = document.createElement("div");
+div.id = "missions-modal";
+div.innerHTML = `<h2>${bloc.titre}</h2>`;
+div.appendChild(creerTableauMissions(list, bloc.actions !== false, bloc.validee || false));
+container.appendChild(div);
+found = true;
+}
+}
+
+if (!found) {
+const div = document.createElement("div");
+div.id = "missions-modal";
+div.innerHTML = "<h2>Aucune mission</h2><p>Aucune mission à afficher pour aujourd’hui.</p>";
+container.appendChild(div);
+}
+
+attacherListenersStartPrestation();
+} catch (e) {
+alert("Erreur serveur.");
+console.error(e);
+}
+}
+
+// Génération tableaux missions
+function creerTableauMissions(missions, avecActions = true, validee = false) {
+const table = document.createElement("table");
+table.className = "missions-table";
+
+table.innerHTML = `
+<thead>
+<tr>
+<th>ID</th>
+<th>Client</th>
+<th>Adresse</th>
+<th>Service</th>
+<th>Date</th>
+<th>Heure</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody></tbody>
+`;
+
+const tbody = table.querySelector("tbody");
+
+missions.forEach(m => {
+const tr = document.createElement("tr");
+const isPending = m.statut === "en attente";
+const isConfirmed = m.statut === "confirmée";
+const isValidated = m.statut === "validée";
+const isTerminee = m.statut === "terminée";
+
+tr.className = isPending ? "status-pending" :
+isConfirmed ? "status-confirmed" :
+isValidated ? "status-validated" :
+"status-completed";
+
+let actionsHTML = "";
+if (isPending) {
+actionsHTML = `
+<div class="actions">
+<button class="btn-action btn-validate" onclick="validerMission('${m.id}')" title="Valider">
+<span class="btn-icon">✅</span>
+</button>
+<button class="btn-action btn-refuse" onclick="refuserMission('${m.id}')" title="Refuser">
+<span class="btn-icon">❌</span>
+</button>
+</div>`;
+} else if (isConfirmed) {
+actionsHTML = `
+<div class="actions">
+<button class="btn-action btn-start" data-id="${m.id}" title="Démarrer">
+<span class="btn-icon">▶</span>
+</button>
+</div>`;
+} else if (isValidated) {
+actionsHTML = `<div class="status-badge validated">✔ Validée</div>`;
+} else if (isTerminee) {
+actionsHTML = `<div class="status-badge completed">🏁 Terminée</div>`;
+}
+
+tr.innerHTML = `
+<td data-label="ID">${m.id}</td>
+<td data-label="Client" data-prenom="${m.prenom || ''}">${m.client}</td>
+<td data-label="Adresse">${m.adresse}</td>
+<td data-label="Service">${m.service}</td>
+<td data-label="Date">${formatDate(m.date)}</td>
+<td data-label="Heure">${formatTime(m.heure)}</td>
+<td data-label="Actions">${actionsHTML}</td>`;
+
+tbody.appendChild(tr);
+});
+
+return table;
+}
+
+// Valider/refuser
+async function validerMission(id) {
+showLoader(true);
+try {
+const callbackName = "cbValider" + Date.now();
+const url = `${webAppUrl}?type=validerMission&id=${encodeURIComponent(id)}`;
+const data = await callApiJsonp(url, callbackName);
+if (data.success) {
+alert("Mission validée !");
+location.reload();
+} else {
+alert("Erreur lors de la validation.");
+}
+} catch (e) {
+alert("Erreur serveur lors de la validation.");
+console.error(e);
+} finally {
+showLoader(false);
+}
+}
+
+function refuserMission(id) {
+const alternatives = prompt("Indiquez une autre date/heure possible :");
+if (!alternatives) return;
+showLoader(true);
+const callbackName = "cbRefuser" + Date.now();
+const url = `${webAppUrl}?type=refuserMission&id=${encodeURIComponent(id)}&alternatives=${encodeURIComponent(alternatives)}`;
+callApiJsonp(url, callbackName)
+.then(() => {
+alert("Proposition envoyée.");
+location.reload();
+})
+.catch(e => {
+alert("Erreur lors de l'envoi.");
+console.error(e);
+})
+.finally(() => showLoader(false));
+}
+
+// Pour démarrer une prestation (Embed 3)
+function attacherListenersStartPrestation() {
+document.querySelectorAll(".btn-start-prestation").forEach(btn => {
+btn.addEventListener("click", () => {
+const missionId = btn.dataset.id;
+if (typeof window.startPrestation === "function") {
+window.startPrestation(missionId);
+} else {
+alert("⏳ Chargement en cours. Merci de patienter ou recharger la page.");
+}
+});
+});
+}
+</script>
+
+Embed 5 
+<style>
+#modalOverlay {
+position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+background: rgba(0,0,0,0.6);
+display: none; justify-content: center; align-items: center;
+z-index: 9999;
+}
+#modalContent {
+background: white; border-radius: 10px; padding: 20px;
+width: 90%; max-width: 480px; max-height: 90vh;
+overflow-y: auto; box-sizing: border-box;
+}
+#qr-reader { width: 100%; }
+label { display: block; margin-top: 15px; font-weight: 600; }
+input, select, textarea {
+width: 100%; padding: 8px; margin-top: 5px;
+border: 1.5px solid #ccc; border-radius: 6px; font-size: 14px;
+box-sizing: border-box;
+}
+button {
+margin-top: 20px; padding: 12px;
+background-color: #B58F0A; color: white;
+border: none; border-radius: 10px;
+cursor: pointer; font-weight: 700;
+width: 100%;
+}
+button:hover { background-color: #9b7606; }
+#btnCancelQR, #btnCancelForm {
+background: #d32f2f !important;
+}
+#photosPreview img {
+max-width: 80px; margin-right: 10px; margin-top: 10px;
+border-radius: 6px; border: 1px solid #ddd;
+}
+.status-badge {
+padding: 4px 8px;
+border-radius: 4px;
+font-weight: 600;
+color: white;
+}
+.validated { background-color: #28a745; }
+.completed { background-color: #6c757d; }
+</style>
+
+<div id="modalOverlay">
+<div id="modalContent">
+<div id="stepQR" style="display:flex; flex-direction:column; align-items:center;">
+<h2>📸 Scanner le QR code client</h2>
+<div id="qr-reader"></div>
+<button id="btnCancelQR">Annuler</button>
+</div>
+
+<div id="stepForm" style="display:none;">
+<h2>📝 Fiche d'observation</h2>
+<form id="obsForm">
+<label>Nom du client</label>
+<input type="text" id="clientName" readonly />
+
+<label>Date de l'observation</label>
+<input type="date" id="obsDate" required />
+
+<label>État de santé</label>
+<textarea id="etatSante" rows="3" placeholder="Décrire l'état de santé..."></textarea>
+
+<label>État de forme</label>
+<select id="etatForme" required>
+<option value="">-- Choisir --</option>
+<option>Très bon</option>
+<option>Bon</option>
+<option>Moyen</option>
+<option>Faible</option>
+<option>Très faible</option>
+</select>
+
+<label>Environnement</label>
+<textarea id="environnement" rows="3" placeholder="Décrire l'environnement..."></textarea>
+
+<label>Photos (max 3)</label>
+<input type="file" id="photos" accept="image/*" multiple />
+<div id="photosPreview"></div>
+
+<button type="submit">Envoyer la fiche</button>
+<button type="button" id="btnCancelForm">Annuler</button>
+</form>
+</div>
+
+<div id="stepSuccess" style="display:none; text-align:center;">
+<h2>✅ Fiche envoyée avec succès !</h2>
+<button id="btnCloseSuccess">Fermer</button>
+</div>
+</div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script>
+let currentMissionId = null;
+let currentClientPrenom = "", currentClientNom = "";
+let currentPrestatairePrenom = "", currentPrestataireNom = "";
+let currentLatitude = null, currentLongitude = null;
+let heureDebut = null;
+
+const modalOverlay = document.getElementById("modalOverlay");
+const stepQR = document.getElementById("stepQR");
+const stepForm = document.getElementById("stepForm");
+const stepSuccess = document.getElementById("stepSuccess");
+
+const clientNameInput = document.getElementById("clientName");
+const obsDateInput = document.getElementById("obsDate");
+const etatSanteInput = document.getElementById("etatSante");
+const etatFormeInput = document.getElementById("etatForme");
+const environnementInput = document.getElementById("environnement");
+const photosInput = document.getElementById("photos");
+const photosPreview = document.getElementById("photosPreview");
+
+function setTodayDate() {
+obsDateInput.value = new Date().toISOString().split("T")[0];
+}
+
+function openModalStartPrestation(missionId, clientPrenom, clientNom, prestatairePrenom, prestataireNom) {
+currentMissionId = missionId;
+currentClientPrenom = clientPrenom;
+currentClientNom = clientNom;
+currentPrestatairePrenom = prestatairePrenom;
+currentPrestataireNom = prestataireNom;
+
+stepQR.style.display = "flex";
+stepForm.style.display = "none";
+stepSuccess.style.display = "none";
+modalOverlay.style.display = "flex";
+
+startQrScanner();
+}
+
+function closeModal() {
+modalOverlay.style.display = "none";
+clearForm();
+}
+
+// JSONP générique
+function callApiJsonp(url, callbackName) {
+return new Promise((resolve, reject) => {
+window[callbackName] = function(data) {
+resolve(data);
+delete window[callbackName];
+script.remove();
+};
+const script = document.createElement('script');
+script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName;
+script.onerror = () => {
+reject(new Error('Erreur chargement script JSONP'));
+delete window[callbackName];
+script.remove();
+};
+document.body.appendChild(script);
+});
+}
+
+async function startQrScanner() {
+document.getElementById("qr-reader").innerHTML = "";
+const qrReader = new Html5Qrcode("qr-reader");
+
+qrReader.start(
+{ facingMode: "environment" },
+{ fps: 10, qrbox: 250 },
+async (decodedText) => {
+qrReader.stop();
+try {
+console.log("🔍 Texte QR scanné :", decodedText);
+
+const url = new URL(decodedText);
+const idClient = url.searchParams.get("idclient") || url.searchParams.get("clientId");
+if (!idClient) throw new Error("QR invalide : idclient manquant");
+
+const callbackName = 'cbVerifyClient' + Date.now();
+const data = await callApiJsonp(
+`${window.webAppUrl}?type=verifqr&idclient=${encodeURIComponent(idClient)}&email=${encodeURIComponent(window.currentEmail)}`,
+callbackName
+);
+
+if (!data.success) {
+alert("❌ " + data.message);
+closeModal();
+return;
+}
+
+// Succès, démarrer la prestation
+heureDebut = new Date().toISOString();
+getGeolocationAndShowForm();
+
+} catch (err) {
+alert("Erreur lors du scan QR.");
+console.error(err);
+closeModal();
+}
+},
+() => {}
+).catch(err => {
+alert("Impossible d’activer la caméra.");
+console.error(err);
+closeModal();
+});
+}
+
+function getGeolocationAndShowForm() {
+if (!navigator.geolocation) {
+alert("❌ Votre appareil ne supporte pas la géolocalisation.");
+closeModal();
+return;
+}
+
+navigator.geolocation.getCurrentPosition(
+position => {
+currentLatitude = position.coords.latitude;
+currentLongitude = position.coords.longitude;
+showForm();
+},
+error => {
+let message = "⚠️ Erreur de géolocalisation.";
+switch (error.code) {
+case error.PERMISSION_DENIED:
+message = "❌ Vous devez autoriser la géolocalisation pour continuer.";
+break;
+case error.POSITION_UNAVAILABLE:
+message = "📍 Position non disponible.";
+break;
+case error.TIMEOUT:
+message = "⏱️ Le délai de localisation est dépassé.";
+break;
+default:
+message = "❌ Erreur inconnue.";
+}
+alert(message);
+closeModal();
+},
+{ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+);
+}
+
+function showForm() {
+stepQR.style.display = "none";
+stepForm.style.display = "block";
+clientNameInput.value = `${currentClientPrenom} ${currentClientNom}`;
+setTodayDate();
+}
+
+function clearForm() {
+obsDateInput.value = "";
+etatSanteInput.value = "";
+etatFormeInput.value = "";
+environnementInput.value = "";
+photosInput.value = "";
+photosPreview.innerHTML = "";
+}
+
+// Preview photos
+photosInput.addEventListener("change", e => {
+photosPreview.innerHTML = "";
+const files = e.target.files;
+if (files.length > 3) {
+alert("Vous ne pouvez sélectionner que 3 photos max.");
+photosInput.value = "";
+return;
+}
+[...files].forEach(file => {
+const reader = new FileReader();
+reader.onload = ev => {
+const img = document.createElement("img");
+img.src = ev.target.result;
+photosPreview.appendChild(img);
+};
+reader.readAsDataURL(file);
+});
+});
+
+// Form submit
+document.getElementById("obsForm").addEventListener("submit", async e => {
+e.preventDefault();
+
+if (photosInput.files.length > 3) {
+alert("Maximum 3 photos autorisées.");
+return;
+}
+
+const heureFin = new Date().toISOString();
+const formData = new FormData();
+formData.append("type", "envoyerFiche");
+formData.append("missionId", currentMissionId);
+formData.append("prenomClient", currentClientPrenom);
+formData.append("nomClient", currentClientNom);
+formData.append("obsDate", obsDateInput.value);
+formData.append("etatSante", etatSanteInput.value);
+formData.append("etatForme", etatFormeInput.value);
+formData.append("environnement", environnementInput.value);
+formData.append("latitude", currentLatitude);
+formData.append("longitude", currentLongitude);
+formData.append("heureDebut", heureDebut);
+formData.append("heureFin", heureFin);
+formData.append("prestatairePrenom", currentPrestatairePrenom);
+formData.append("prestataireNom", currentPrestataireNom);
+formData.append("prestataireEmail", window.currentEmail);
+
+for (let file of photosInput.files) {
+formData.append("photos", file);
+}
+
+try {
+const res = await fetch(window.webAppUrl, {
+method: "POST",
+body: formData,
+});
+const json = await res.json();
+if (json.success) {
+stepForm.style.display = "none";
+stepSuccess.style.display = "block";
+} else {
+alert("Erreur : " + (json.message || "Envoi échoué"));
+}
+} catch (err) {
+alert("Erreur réseau.");
+console.error(err);
+}
+});
+
+// Boutons annuler et fermer
+document.getElementById("btnCancelQR").onclick = closeModal;
+document.getElementById("btnCancelForm").onclick = closeModal;
+document.getElementById("btnCloseSuccess").onclick = closeModal;
+
+// Fonction exposée pour démarrer la prestation
+window.startPrestation = function(missionId) {
+const rows = [...document.querySelectorAll("table tbody tr")];
+const row = rows.find(tr =>
+tr.children[0]?.textContent.trim().toUpperCase() === missionId.toUpperCase()
+);
+
+if (!row) {
+alert(`❌ Ligne de mission introuvable pour l'ID ${missionId}`);
+console.warn("Lignes disponibles :", rows.map(r => r.children[0]?.textContent.trim()));
+return;
+}
+
+const clientNom = row.children[1]?.textContent.trim() || "";
+const clientPrenom = row.children[1]?.dataset.prenom?.trim() || clientNom.split(" ")[0];
+
+const prestatairePrenom = window.currentPrenom || "Jean";
+const prestataireNom = window.currentNom || "Dupont";
+
+openModalStartPrestation(missionId, clientPrenom, clientNom, prestatairePrenom, prestataireNom);
+};
+</script>
+
+Embed 6
+<script>
+const webAppUrl = "https://script.google.com/macros/s/AKfycbzEEZZnZJK1BEXlCk81ogi0Aa7MFGunOkjS5s2CCDIZPSkHq0OtPAcEBLrkXp-fpb8aaQ/exec";
+
+function show(el, visible) {
+if (!el) return;
+el.style.display = visible ? "block" : "none";
+}
+
+async function login() {
+const email = document.getElementById("email")?.value.trim();
+const password = document.getElementById("password")?.value.trim();
+const message = document.getElementById("message");
+const loader = document.querySelector(".viiveo-loader");
+const form = document.querySelector(".viiveo-login");
+const missionsBlock = document.querySelector(".viiveo-missions");
+
+if (!email || !password) {
+message.textContent = "Champs requis.";
+return;
+}
+message.textContent = "";
+show(loader, true);
+
+try {
+const callbackName = 'cbLogin' + Date.now();
+const url = `${webAppUrl}?type=loginpresta&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+const data = await callApiJsonp(url, callbackName);
+if (!data.success) {
+message.textContent = data.message || "Connexion échouée.";
+return;
+}
+
+show(form, false);
+show(missionsBlock, true);
+await loadMissions(email);
+} catch (err) {
+message.textContent = "Erreur serveur.";
+console.error(err);
+} finally {
+show(loader, false);
+}
+}
+
+async function loadMissions(email) {
+const contAttente = document.getElementById("missions-attente");
+const contAvenir = document.getElementById("missions-a-venir");
+const contTerminees = document.getElementById("missions-terminees");
+if (!contAttente || !contAvenir || !contTerminees) return;
+
+contAttente.innerHTML = "Chargement...";
+contAvenir.innerHTML = "Chargement...";
+contTerminees.innerHTML = "Chargement...";
+
+try {
+const callbackName = 'cbMissions' + Date.now();
+const url = `${webAppUrl}?type=missionspresta&email=${encodeURIComponent(email)}`;
+const data = await callApiJsonp(url, callbackName);
+
+if (!data.success || !Array.isArray(data.missions)) {
+alert("Erreur lors du chargement des missions.");
+return;
+}
+
+const missions = data.missions;
+const missionsAttente = missions.filter(m => m.statut === "en attente");
+const missionsValidees = missions.filter(m => m.statut === "confirmée" || m.statut === "validée");
+const missionsTerminees = missions.filter(m => m.statut === "terminée");
+
+contAttente.innerHTML = renderTable(missionsAttente, 'attente');
+contAvenir.innerHTML = renderTable(missionsValidees, 'validee');
+contTerminees.innerHTML = renderTable(missionsTerminees, '');
+} catch (e) {
+alert("Erreur serveur.");
+console.error(e);
+}
+}
+
+function renderTable(missions, type = "") {
+if (!missions.length) return "<p>Aucune mission.</p>";
+let html = `<table><thead><tr><th>ID</th><th>Client</th><th>Adresse</th><th>Service</th><th>Date</th><th>Heure</th>`;
+if (type) html += "<th>Actions</th>";
+html += "</tr></thead><tbody>";
+
+missions.forEach(m => {
+const date = new Date(m.date).toLocaleDateString('fr-FR');
+const heure = new Date(m.heure);
+const formattedHeure = `${String(heure.getHours()).padStart(2, '0')}h${String(heure.getMinutes()).padStart(2, '0')}`;
+html += `<tr>
+<td>${m.id}</td>
+<td>${m.client}</td>
+<td>${m.adresse}</td>
+<td>${m.service}</td>
+<td>${date}</td>
+<td>${formattedHeure}</td>`;
+if (type === "attente") {
+html += `<td>
+<button onclick="validerMission('${m.id}')">✅</button>
+<button onclick="refuserMission('${m.id}')">❌</button>
+</td>`;
+} else if (type === "validee") {
+html += `<td><button onclick="handleStartPrestation('${m.id}')">▶️</button></td>`;
+}
+html += "</tr>";
+});
+
+html += "</tbody></table>";
+return html;
+}
+
+async function validerMission(id) {
+if (!confirm("Confirmer la validation ?")) return;
+const callbackName = 'cbValider' + Date.now();
+const url = `${webAppUrl}?type=validerMission&id=${encodeURIComponent(id)}`;
+await callApiJsonp(url, callbackName);
+alert("Mission validée.");
+const email = document.getElementById("email")?.value.trim();
+if (email) await loadMissions(email);
+}
+
+async function refuserMission(id) {
+const alt = prompt("Nouvelle date/heure ?");
+if (!alt) return;
+const callbackName = 'cbRefuser' + Date.now();
+const url = `${webAppUrl}?type=refuserMission&id=${encodeURIComponent(id)}&alternatives=${encodeURIComponent(alt)}`;
+await callApiJsonp(url, callbackName);
+alert("Proposition envoyée.");
+const email = document.getElementById("email")?.value.trim();
+if (email) await loadMissions(email);
+}
+
+function handleStartPrestation(id) {
+setTimeout(() => {
+if (typeof window.startPrestation === "function") {
+window.startPrestation(id);
+} else {
+alert("⏳ Chargement en cours...");
+}
+}, 300);
+}
+
+// JSONP helper (à copier si pas déjà présent)
+function callApiJsonp(url, callbackName) {
+return new Promise((resolve, reject) => {
+window[callbackName] = function(data) {
+resolve(data);
+delete window[callbackName];
+script.remove();
+};
+const script = document.createElement('script');
+script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName;
+script.onerror = () => {
+reject(new Error('Erreur chargement script JSONP'));
+delete window[callbackName];
+script.remove();
+};
+document.body.appendChild(script);
+});
+}
+</script>
