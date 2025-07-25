@@ -353,16 +353,6 @@ async function refuserMission(id) {
     if (window.currentEmail) await loadMissions(window.currentEmail);
 }
 
-function handleStartPrestation(id) {
-    setTimeout(() => {
-        if (typeof window.startPrestation === "function") {
-            window.startPrestation(id);
-        } else {
-            alert("⏳ Le système de scan n'est pas encore prêt. Veuillez patienter ou recharger la page.");
-        }
-    }, 300);
-}
-
 // Fonctions utilitaires génériques
 function clearForm(formElement) {
     if (!formElement) return;
