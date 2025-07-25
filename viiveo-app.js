@@ -1,32 +1,41 @@
 // viiveo-app.js - À placer sur GitHub
 
-// Variables pour l'état de la mission et du prestataire
+// Variables globales pour l'état de la mission et du prestataire
 let currentMissionId = null;
 let currentClientPrenom = "", currentClientNom = "";
 let currentPrestatairePrenom = null, currentPrestataireNom = null;
 let currentLatitude = null, currentLongitude = null;
 let heureDebut = null;
 
-// Références DOM (doivent être après le HTML dans le DOM)
-const modalOverlay = document.getElementById("modalOverlay");
-const stepQR = document.getElementById("stepQR");
-const stepForm = document.getElementById("stepForm");
-const stepSuccess = document.getElementById("stepSuccess");
+// Références DOM GLOBALES (seulement celles qui sont présentes dès le chargement initial de la page ou qui ne sont pas directement attachées aux modales)
+// Si ces éléments ne sont PAS trouvés ici, cela n'empêchera pas le script de fonctionner, ils seront null.
+// Nous allons nous assurer que les fonctions qui les utilisent vérifient leur existence.
 
-const clientNameInput = document.getElementById("clientName");
-const obsDateInput = document.getElementById("obsDate");
-const etatSanteInput = document.getElementById("etatSante");
-const etatFormeInput = document.getElementById("etatForme");
-const environnementInput = document.getElementById("environnement");
-const photosInput = document.getElementById("photos");
-const photosPreview = document.getElementById("photosPreview");
 
 // Fonctions liées au scanner et à la modale
-function setTodayDate() {
-    obsDateInput.value = new Date().toISOString().split("T")[0];
+// Note : Les références DOM spécifiques aux modales (modalOverlay, stepQR, etc.)
+// seront obtenues DANS la fonction initializeModalListeners().
+// Cela garantira qu'elles sont appelées APRÈS que les modales soient chargées.
+
+function setTodayDate(obsDateInput) { // obsDateInput passé en paramètre
+    if (obsDateInput) {
+        obsDateInput.value = new Date().toISOString().split("T")[0];
+    }
 }
 
 function openModalStartPrestation(missionId, clientPrenom, clientNom) {
+    // Références DOM pour la modale doivent être obtenues ici ou passées
+    const modalOverlay = document.getElementById("modalOverlay");
+    const stepQR = document.getElementById("stepQR");
+    const stepForm = document.getElementById("stepForm");
+    const stepSuccess = document.getElementById("stepSuccess");
+
+    if (!modalOverlay || !stepQR || !stepForm || !stepSuccess) {
+        console.error("Erreur: Éléments de la modale non trouvés lors de l'ouverture.");
+        alert("Une erreur est survenue lors de l'ouverture de la modale. Veuillez recharger la page.");
+        return;
+    }
+
     if (!window.currentEmail) {
         alert("Erreur: Les données du prestataire ne sont pas chargées. Veuillez vous reconnecter.");
         console.error("Tentative d'ouvrir la modale sans données prestataire (email null).");
@@ -48,8 +57,14 @@ function openModalStartPrestation(missionId, clientPrenom, clientNom) {
 }
 
 function closeModal() {
-    modalOverlay.style.display = "none";
-    clearForm(document.getElementById("obsForm")); // Utilisez clearForm avec l'ID du formulaire
+    const modalOverlay = document.getElementById("modalOverlay");
+    if (modalOverlay) {
+        modalOverlay.style.display = "none";
+    }
+    const obsForm = document.getElementById("obsForm");
+    if (obsForm) {
+        clearForm(obsForm);
+    }
     const qrReaderInstance = Html5Qrcode.getCameras().find(c => c.id === "qr-reader");
     if (qrReaderInstance && qrReaderInstance.isScanning) {
         qrReaderInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
@@ -57,7 +72,14 @@ function closeModal() {
 }
 
 async function startQrScanner() {
-    document.getElementById("qr-reader").innerHTML = "";
+    const qrReaderElement = document.getElementById("qr-reader");
+    if (!qrReaderElement) {
+        console.error("Élément 'qr-reader' non trouvé.");
+        alert("Erreur: Le scanner QR ne peut pas démarrer (élément manquant).");
+        closeModal();
+        return;
+    }
+    qrReaderElement.innerHTML = "";
     const qrReader = new Html5Qrcode("qr-reader");
 
     qrReader.start(
@@ -142,19 +164,38 @@ function getGeolocationAndShowForm() {
 }
 
 function showForm() {
+    const stepQR = document.getElementById("stepQR");
+    const stepForm = document.getElementById("stepForm");
+    const clientNameInput = document.getElementById("clientName");
+    const obsDateInput = document.getElementById("obsDate");
+
+    if (!stepQR || !stepForm || !clientNameInput || !obsDateInput) {
+        console.error("Éléments du formulaire de prestation non trouvés pour l'affichage.");
+        alert("Erreur: Impossible d'afficher le formulaire de prestation. Veuillez recharger la page.");
+        closeModal();
+        return;
+    }
+
     stepQR.style.display = "none";
     stepForm.style.display = "block";
     clientNameInput.value = `${currentClientPrenom} ${currentClientNom}`;
-    setTodayDate();
+    setTodayDate(obsDateInput); // Passe obsDateInput en paramètre
 }
 
 function clearFormFields() { // Renommée pour éviter conflit avec la fonction utilitaire clearForm
-    obsDateInput.value = "";
-    etatSanteInput.value = "";
-    etatFormeInput.value = "";
-    environnementInput.value = "";
-    photosInput.value = "";
-    photosPreview.innerHTML = "";
+    const obsDateInput = document.getElementById("obsDate");
+    const etatSanteInput = document.getElementById("etatSante");
+    const etatFormeInput = document.getElementById("etatForme");
+    const environnementInput = document.getElementById("environnement");
+    const photosInput = document.getElementById("photos");
+    const photosPreview = document.getElementById("photosPreview");
+
+    if (obsDateInput) obsDateInput.value = "";
+    if (etatSanteInput) etatSanteInput.value = "";
+    if (etatFormeInput) etatFormeInput.value = "";
+    if (environnementInput) environnementInput.value = "";
+    if (photosInput) photosInput.value = "";
+    if (photosPreview) photosPreview.innerHTML = "";
 }
 
 // Fonctions liées au login et missions
@@ -172,10 +213,10 @@ async function login() {
     const missionsBlock = document.querySelector(".viiveo-missions");
 
     if (!email || !password) {
-        message.textContent = "Champs requis.";
+        if (message) message.textContent = "Champs requis.";
         return;
     }
-    message.textContent = "";
+    if (message) message.textContent = "";
     show(loader, true);
     tempDisable(document.querySelector(".viiveo-login button"), 3000); // Désactive le bouton 3s
 
@@ -184,7 +225,7 @@ async function login() {
         const url = `${window.webAppUrl}?type=loginpresta&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
         const data = await callApiJsonp(url, callbackName);
         if (!data.success) {
-            message.textContent = data.message || "Connexion échouée.";
+            if (message) message.textContent = data.message || "Connexion échouée.";
             return;
         }
 
@@ -194,7 +235,7 @@ async function login() {
         show(missionsBlock, true);
         await loadMissions(window.currentEmail);
     } catch (err) {
-        message.textContent = "Erreur serveur.";
+        if (message) message.textContent = "Erreur serveur.";
         console.error(err);
     } finally {
         show(loader, false);
@@ -205,7 +246,10 @@ window.loadMissions = async function(emailToLoad) {
     const contAttente = document.getElementById("missions-attente");
     const contAvenir = document.getElementById("missions-a-venir");
     const contTerminees = document.getElementById("missions-terminees");
-    if (!contAttente || !contAvenir || !contTerminees) return;
+    if (!contAttente || !contAvenir || !contTerminees) {
+        console.warn("Conteneurs de missions non trouvés. Impossible de charger les missions.");
+        return; // Ne pas continuer si les éléments ne sont pas là
+    }
 
     contAttente.innerHTML = "Chargement...";
     contAvenir.innerHTML = "Chargement...";
@@ -296,128 +340,18 @@ function handleStartPrestation(id) {
     }, 300);
 }
 
-// Gestionnaires d'événements
-photosInput.addEventListener("change", e => {
-    photosPreview.innerHTML = "";
-    const files = e.target.files;
-    if (files.length > 3) {
-        alert("Vous ne pouvez sélectionner que 3 photos max.");
-        photosInput.value = "";
-        return;
-    }
-    [...files].forEach(file => {
-        const reader = new FileReader();
-        reader.onload = ev => {
-            const img = document.createElement("img");
-            img.src = ev.target.result;
-            photosPreview.appendChild(img);
-        };
-        reader.readAsDataURL(file);
-    });
-});
-
-document.getElementById("obsForm").addEventListener("submit", async e => {
-    e.preventDefault();
-
-    if (photosInput.files.length > 3) {
-        alert("Maximum 3 photos autorisées.");
-        return;
-    }
-
-    if (!window.currentEmail) {
-        alert("Erreur: Données du prestataire manquantes pour l'envoi.");
-        console.error("Tentative d'envoi de formulaire sans email prestataire.");
-        return;
-    }
-
-    const heureFin = new Date().toISOString();
-    const formData = new FormData();
-    formData.append("type", "envoyerFiche");
-    formData.append("missionId", currentMissionId);
-    formData.append("prenomClient", currentClientPrenom);
-    formData.append("nomClient", currentClientNom);
-    formData.append("obsDate", obsDateInput.value);
-    formData.append("etatSante", etatSanteInput.value);
-    formData.append("etatForme", etatFormeInput.value);
-    formData.append("environnement", environnementInput.value);
-    formData.append("latitude", currentLatitude);
-    formData.append("longitude", currentLongitude);
-    formData.append("heureDebut", heureDebut);
-    formData.append("heureFin", heureFin);
-    formData.append("prestatairePrenom", window.currentPrenom);
-    formData.append("prestataireNom", window.currentNom);
-    formData.append("prestataireEmail", window.currentEmail);
-
-    for (let file of photosInput.files) {
-        formData.append("photos", file);
-    }
-
-    try {
-        const res = await fetch(window.webAppUrl, {
-            method: "POST",
-            body: formData,
-        });
-        const json = await res.json();
-        if (json.success) {
-            stepForm.style.display = "none";
-            stepSuccess.style.display = "block";
-            if (typeof window.loadMissions === 'function' && window.currentEmail) {
-                 window.loadMissions(window.currentEmail);
-            }
-        } else {
-            alert("Erreur : " + (json.message || "Envoi échoué"));
-        }
-    } catch (err) {
-        alert("Erreur réseau ou du serveur lors de l'envoi de la fiche.");
-        console.error("Erreur lors de l'envoi de la fiche:", err);
-    }
-});
-
-document.getElementById("btnCancelQR").onclick = closeModal;
-document.getElementById("btnCancelForm").onclick = closeModal;
-document.getElementById("btnCloseSuccess").onclick = closeModal;
-
-window.startPrestation = function(missionId) {
-    if (!window.currentEmail) {
-        alert("Vous devez être connecté pour démarrer une prestation. Veuillez vous authentifier.");
-        console.warn("Tentative de démarrer une prestation sans prestataire connecté.");
-        return;
-    }
-
-    const rows = [...document.querySelectorAll("table tbody tr")];
-    const row = rows.find(tr =>
-        tr.children[0]?.textContent.trim().toUpperCase() === missionId.toUpperCase()
-    );
-
-    if (!row) {
-        alert(`❌ Ligne de mission introuvable pour l'ID ${missionId}`);
-        console.warn("Lignes disponibles :", rows.map(r => r.children[0]?.textContent.trim()));
-        return;
-    }
-
-    const clientNom = row.children[1]?.textContent.trim() || "";
-    // Note: clientPrenom n'est pas extrait directement de la table ici.
-    // Assurez-vous que votre tableau ou votre backend fournit le prénom si nécessaire.
-    // Pour l'instant, je le laisse comme une chaîne vide si non disponible.
-    const clientPrenom = row.children[1]?.dataset.prenom?.trim() || clientNom.split(" ")[0];
-
-    openModalStartPrestation(missionId, clientPrenom, clientNom);
-};
-
-// Fonctions utilitaires génériques (ajoutées depuis votre dernier embed)
-// 🧼 Fonction pour nettoyer les inputs d’un formulaire (corrigée pour un usage plus générique)
+// Fonctions utilitaires génériques
 function clearForm(formElement) {
     if (!formElement) return;
     Array.from(formElement.elements).forEach(el => {
         if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
             el.value = '';
         } else if (el.tagName === 'SELECT') {
-            el.selectedIndex = 0; // Réinitialise la sélection à la première option
+            el.selectedIndex = 0;
         }
     });
 }
 
-// ⌛ Fonction pour désactiver un bouton temporairement
 function tempDisable(btn, ms = 1000) {
     if (!btn) return;
     btn.disabled = true;
@@ -426,41 +360,50 @@ function tempDisable(btn, ms = 1000) {
     }, ms);
 }
 
-// 💡 Fonction pour créer un élément HTML depuis une chaîne HTML
 function createElementFromHTML(htmlString) {
     const div = document.createElement('div');
     div.innerHTML = htmlString.trim();
-    return div.firstChild; // Retourne le premier élément enfant
+    return div.firstChild;
 }
 
 // Nouvelle fonction pour initialiser les écouteurs de la modale d'observation
 function initializeModalListeners() {
+    const modalOverlay = document.getElementById("modalOverlay");
+    const stepQR = document.getElementById("stepQR");
+    const stepForm = document.getElementById("stepForm");
+    const stepSuccess = document.getElementById("stepSuccess");
     const obsForm = document.getElementById("obsForm");
-    if (obsForm) {
-        // Assurez-vous que les fonctions et éléments sont prêts
-        if (photosInput && photosPreview) { // Vérifiez que photosInput et photosPreview sont bien définis
-            photosInput.addEventListener("change", e => {
-                photosPreview.innerHTML = "";
-                const files = e.target.files;
-                if (files.length > 3) {
-                    alert("Vous ne pouvez sélectionner que 3 photos max.");
-                    photosInput.value = "";
-                    return;
-                }
-                [...files].forEach(file => {
-                    const reader = new FileReader();
-                    reader.onload = ev => {
-                        const img = document.createElement("img");
-                        img.src = ev.target.result;
-                        photosPreview.appendChild(img);
-                    };
-                    reader.readAsDataURL(file);
-                });
-            });
-        } else {
-            console.warn("Éléments de prévisualisation de photos non trouvés.");
-        }
+    const photosInput = document.getElementById("photos");
+    const photosPreview = document.getElementById("photosPreview");
+    const clientNameInput = document.getElementById("clientName");
+    const obsDateInput = document.getElementById("obsDate");
+    const etatSanteInput = document.getElementById("etatSante");
+    const etatFormeInput = document.getElementById("etatForme");
+    const environnementInput = document.getElementById("environnement");
 
+    // Vérifier si tous les éléments essentiels de la modale sont présents
+    if (modalOverlay && stepQR && stepForm && stepSuccess && obsForm && photosInput && photosPreview && clientNameInput && obsDateInput && etatSanteInput && etatFormeInput && environnementInput) {
+        // Attachez le change listener pour les photos
+        photosInput.addEventListener("change", e => {
+            photosPreview.innerHTML = "";
+            const files = e.target.files;
+            if (files.length > 3) {
+                alert("Vous ne pouvez sélectionner que 3 photos max.");
+                photosInput.value = "";
+                return;
+            }
+            [...files].forEach(file => {
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    const img = document.createElement("img");
+                    img.src = ev.target.result;
+                    photosPreview.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+
+        // Attachez le submit listener pour le formulaire d'observation
         obsForm.addEventListener("submit", async e => {
             e.preventDefault();
 
@@ -526,38 +469,25 @@ function initializeModalListeners() {
         console.log("Écouteurs de la modale d'observation initialisés.");
 
     } else {
-        // La modale n'est pas encore là, réessaie
-        console.warn("Formulaire d'observation non disponible. Nouvelle tentative d'initialisation des écouteurs de modale...");
-        setTimeout(initializeModalListeners, 100); // Court délai pour réessayer
+        console.warn("Certains éléments de la modale d'observation sont manquants. Nouvelle tentative d'initialisation des écouteurs de modale...");
+        setTimeout(initializeModalListeners, 100);
     }
 }
 
 
-// Cette fonction va tenter d'attacher l'écouteur du formulaire de connexion
 function initializeLoginForm() {
     const loginForm = document.getElementById("loginForm");
     if (loginForm && typeof login === 'function') {
-        // Supprime l'écouteur précédent pour éviter les doubles attachements si la fonction est appelée plusieurs fois
         loginForm.removeEventListener("submit", login);
-        // Attache l'écouteur de soumission au formulaire
         loginForm.addEventListener("submit", login);
         console.log("Écouteur de soumission ajouté au formulaire de connexion.");
     } else {
-        // Si le formulaire ou la fonction de login n'est pas encore disponible, on réessaie après un court délai
         console.warn("Formulaire de connexion ou fonction 'login' non disponible. Nouvelle tentative...");
-        setTimeout(initializeLoginForm, 200); // Réessaie après un court délai
+        setTimeout(initializeLoginForm, 200);
     }
 }
 
-// Une fois que le DOM est complètement chargé, on tente d'initialiser les formulaires
 document.addEventListener('DOMContentLoaded', () => {
-    initializeLoginForm(); // Déclenche l'initialisation du formulaire de connexion
-    // Comme la modale est chargée dynamiquement, nous devons attendre son apparition
-    // pour attacher ses écouteurs. Le script de l'Embed 3 gère son ajout.
-    // L'appel à initializeModalListeners() devrait se faire APRES que viiveo-modals.html
-    // ait été injecté dans le DOM, ce qui est géré par la promesse 'fetch' dans l'Embed 3.
-    // Pour être sûr, on peut l'appeler avec un petit délai ou après la promesse de fetch.
-    // Ici, on le mettra dans un setTimeout pour donner le temps aux modales d'apparaître
-    // après que l'Embed 3 ait fait son travail.
-    setTimeout(initializeModalListeners, 500); // Attendre un peu plus pour les éléments de la modale
+    initializeLoginForm();
+    setTimeout(initializeModalListeners, 500);
 });
