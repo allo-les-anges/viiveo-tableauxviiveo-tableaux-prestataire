@@ -249,36 +249,38 @@ input[type="email"], input[type="password"] {
 /* === Style spécifique Modale Scan QR & fiche observation === */
 
 #modalOverlay {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.6);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-    padding: 10px;
-    overflow-y: auto;
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    padding: 10px;
+    overflow-y: auto;
 }
 #modalContent {
-    background: white;
-    border-radius: 10px;
-    padding: 20px;
-    width: 100%;
-    max-width: 480px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-sizing: border-box;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    display: flex;
-    flex-direction: column;
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    width: 100%;
+    max-width: 480px; /* Conserver ou augmenter si vous voulez une modale plus large */
+    max-height: 90vh;
+    overflow-y: auto;
+    box-sizing: border-box;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
 }
 
-#qr-reader video, #qr-reader canvas { /* Cibler la vidéo ou le canvas à l'intérieur */
-    width: 100% !important;
-    height: auto !important; /* Garde l'aspect ratio de la source vidéo */
-    object-fit: cover !important; /* Pour remplir le conteneur sans déformation si besoin */
-    /* max-width et max-height pourraient aussi être utiles si le flux est trop grand */
+#qr-reader {
+    width: 100% !important;
+    height: auto !important;
+    /* aspect-ratio: 1 / 1; */ /* <--- C'EST CETTE LIGNE QU'IL FAUT COMMENTER OU SUPPRIMER */
+    max-height: 350px;
+    margin: 0 auto;
 }
 
+// ... Le reste de votre CSS reste inchangé
 /* Styles pour les labels et inputs/select/textarea à l'intérieur de la modale */
 #modalContent label {
     display: block;
