@@ -7,24 +7,14 @@ let currentPrestatairePrenom = null, currentPrestataireNom = null;
 let currentLatitude = null, currentLongitude = null;
 let heureDebut = null;
 
-// Références DOM GLOBALES (seulement celles qui sont présentes dès le chargement initial de la page ou qui ne sont pas directement attachées aux modales)
-// Si ces éléments ne sont PAS trouvés ici, cela n'empêchera pas le script de fonctionner, ils seront null.
-// Nous allons nous assurer que les fonctions qui les utilisent vérifient leur existence.
-
-
 // Fonctions liées au scanner et à la modale
-// Note : Les références DOM spécifiques aux modales (modalOverlay, stepQR, etc.)
-// seront obtenues DANS la fonction initializeModalListeners().
-// Cela garantira qu'elles sont appelées APRÈS que les modales soient chargées.
-
-function setTodayDate(obsDateInput) { // obsDateInput passé en paramètre
+function setTodayDate(obsDateInput) {
     if (obsDateInput) {
         obsDateInput.value = new Date().toISOString().split("T")[0];
     }
 }
 
 function openModalStartPrestation(missionId, clientPrenom, clientNom) {
-    // Références DOM pour la modale doivent être obtenues ici ou passées
     const modalOverlay = document.getElementById("modalOverlay");
     const stepQR = document.getElementById("stepQR");
     const stepForm = document.getElementById("stepForm");
@@ -51,7 +41,7 @@ function openModalStartPrestation(missionId, clientPrenom, clientNom) {
     stepQR.style.display = "flex";
     stepForm.style.display = "none";
     stepSuccess.style.display = "none";
-    modalOverlay.style.display = "flex";
+    modalOverlay.style.display = "flex"; // REND LA MODALE VISIBLE ICI
 
     startQrScanner();
 }
@@ -59,16 +49,24 @@ function openModalStartPrestation(missionId, clientPrenom, clientNom) {
 function closeModal() {
     const modalOverlay = document.getElementById("modalOverlay");
     if (modalOverlay) {
-        modalOverlay.style.display = "none";
+        modalOverlay.style.display = "none"; // CACHE LA MODALE ICI
     }
     const obsForm = document.getElementById("obsForm");
     if (obsForm) {
         clearForm(obsForm);
     }
-    const qrReaderInstance = Html5Qrcode.getCameras().find(c => c.id === "qr-reader");
+    // Tentative d'arrêt de toutes les instances Html5Qrcode (plus robuste)
+    Html5Qrcode.getCameras().forEach(camera => {
+        if (camera && camera.isScanning) {
+            camera.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
+        }
+    });
+    // Si vous avez un Html5QrcodeScanner instancié directement (pas par ID)
+    const qrReaderInstance = window.qrScannerInstance; // Assurez-vous que cette variable est définie si vous l'utilisez
     if (qrReaderInstance && qrReaderInstance.isScanning) {
-        qrReaderInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
+        qrReaderInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner (instance):", err));
     }
+
 }
 
 async function startQrScanner() {
@@ -79,14 +77,20 @@ async function startQrScanner() {
         closeModal();
         return;
     }
-    qrReaderElement.innerHTML = "";
+    qrReaderElement.innerHTML = ""; // Nettoie l'élément avant de redémarrer le scanner
+
+    // IMPORTANT : Utilisez une variable globale pour l'instance du scanner si vous ne voulez qu'une seule instance active
+    // Ou assurez-vous de bien la gérer. Ici, on crée une nouvelle instance à chaque appel.
     const qrReader = new Html5Qrcode("qr-reader");
+
+    // Stockez l'instance si vous voulez la référencer facilement pour l'arrêter
+    // window.qrScannerInstance = qrReader; // Décommentez si vous utilisez window.qrScannerInstance dans closeModal
 
     qrReader.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: 250 },
         async (decodedText) => {
-            qrReader.stop();
+            qrReader.stop(); // Arrête le scanner après un scan réussi
             try {
                 console.log("🔍 Texte QR scanné :", decodedText);
 
@@ -119,7 +123,11 @@ async function startQrScanner() {
                 closeModal();
             }
         },
-        () => {}
+        (errorMessage) => {
+            // Cette fonction est appelée en cas d'erreur ou d'échec de lecture continu
+            // Ne pas alerter l'utilisateur constamment, juste logguer
+            // console.warn("QR Scan progress error:", errorMessage);
+        }
     ).catch(err => {
         alert("Impossible d’activer la caméra. Assurez-vous d'avoir donné les permissions.");
         console.error("Erreur d'initialisation de la caméra:", err);
@@ -179,10 +187,10 @@ function showForm() {
     stepQR.style.display = "none";
     stepForm.style.display = "block";
     clientNameInput.value = `${currentClientPrenom} ${currentClientNom}`;
-    setTodayDate(obsDateInput); // Passe obsDateInput en paramètre
+    setTodayDate(obsDateInput);
 }
 
-function clearFormFields() { // Renommée pour éviter conflit avec la fonction utilitaire clearForm
+function clearFormFields() {
     const obsDateInput = document.getElementById("obsDate");
     const etatSanteInput = document.getElementById("etatSante");
     const etatFormeInput = document.getElementById("etatForme");
@@ -205,7 +213,7 @@ function show(el, visible) {
 }
 
 async function login() {
-    console.log("LOGIN: Fonction login() appelée."); // AJOUTEZ CETTE LIGNE
+    console.log("LOGIN: Fonction login() appelée.");
     const email = document.getElementById("email")?.value.trim();
     const password = document.getElementById("password")?.value.trim();
     const message = document.getElementById("message");
@@ -215,29 +223,28 @@ async function login() {
 
     if (!email || !password) {
         if (message) message.textContent = "Champs requis.";
-        console.log("LOGIN: Champs email/password requis."); // AJOUTEZ CETTE LIGNE
+        console.log("LOGIN: Champs email/password requis.");
         return;
     }
     if (message) message.textContent = "";
     show(loader, true);
-    tempDisable(document.querySelector(".viiveo-login button"), 3000); // Désactive le bouton 3s
-    console.log("LOGIN: Tentative de connexion avec email:", email); // AJOUTEZ CETTE LIGNE
+    tempDisable(document.querySelector(".viiveo-login button"), 3000);
+    console.log("LOGIN: Tentative de connexion avec email:", email);
 
     try {
         const callbackName = 'cbLogin' + Date.now();
-        // Vérifier si window.webAppUrl est bien défini avant de l'utiliser
         if (!window.webAppUrl) {
-            console.error("LOGIN ERROR: window.webAppUrl n'est pas défini !"); // AJOUTEZ CETTE LIGNE
+            console.error("LOGIN ERROR: window.webAppUrl n'est pas défini !");
             if (message) message.textContent = "Erreur de configuration: URL de l'application manquante.";
             return;
         }
         const url = `${window.webAppUrl}?type=loginpresta&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
-        console.log("LOGIN: URL d'API générée:", url); // AJOUTEZ CETTE LIGNE
+        console.log("LOGIN: URL d'API générée:", url);
         const data = await callApiJsonp(url, callbackName);
-        console.log("LOGIN: Réponse de l'API de login:", data); // AJOUTEZ CETTE LIGNE
+        console.log("LOGIN: Réponse de l'API de login:", data);
         if (!data.success) {
             if (message) message.textContent = data.message || "Connexion échouée.";
-            console.log("LOGIN: Connexion échouée. Message:", data.message); // AJOUTEZ CETTE LIGNE
+            console.log("LOGIN: Connexion échouée. Message:", data.message);
             return;
         }
 
@@ -246,13 +253,13 @@ async function login() {
         show(form, false);
         show(missionsBlock, true);
         await loadMissions(window.currentEmail);
-        console.log("LOGIN: Missions chargées après connexion réussie."); // AJOUTEZ CETTE LIGNE
+        console.log("LOGIN: Missions chargées après connexion réussie.");
     } catch (err) {
-        if (message) message.textContent = "Erreur serveur ou réseau."; // MODIFIEZ POUR ÊTRE PLUS GÉNÉRIQUE
-        console.error("LOGIN ERROR: Erreur dans la fonction login():", err); // AJOUTEZ CETTE LIGNE
+        if (message) message.textContent = "Erreur serveur ou réseau.";
+        console.error("LOGIN ERROR: Erreur dans la fonction login():", err);
     } finally {
         show(loader, false);
-        console.log("LOGIN: Fonction login() terminée."); // AJOUTEZ CETTE LIGNE
+        console.log("LOGIN: Fonction login() terminée.");
     }
 }
 
@@ -262,7 +269,7 @@ window.loadMissions = async function(emailToLoad) {
     const contTerminees = document.getElementById("missions-terminees");
     if (!contAttente || !contAvenir || !contTerminees) {
         console.warn("Conteneurs de missions non trouvés. Impossible de charger les missions.");
-        return; // Ne pas continuer si les éléments ne sont pas là
+        return;
     }
 
     contAttente.innerHTML = "Chargement...";
@@ -271,20 +278,19 @@ window.loadMissions = async function(emailToLoad) {
 
     try {
         const callbackName = 'cbMissions' + Date.now();
-        // Vérifier si window.webAppUrl est bien défini avant de l'utiliser
-        if (!window.webAppUrl) { // AJOUTEZ CETTE VÉRIFICATION
-            console.error("LOAD MISSIONS ERROR: window.webAppUrl n'est pas défini !"); // AJOUTEZ CETTE LIGNE
+        if (!window.webAppUrl) {
+            console.error("LOAD MISSIONS ERROR: window.webAppUrl n'est pas défini !");
             alert("Erreur de configuration: URL de l'application manquante pour charger les missions.");
             return;
         }
         const url = `${window.webAppUrl}?type=missionspresta&email=${encodeURIComponent(emailToLoad)}`;
-        console.log("LOAD MISSIONS: URL d'API générée:", url); // AJOUTEZ CETTE LIGNE
+        console.log("LOAD MISSIONS: URL d'API générée:", url);
         const data = await callApiJsonp(url, callbackName);
-        console.log("LOAD MISSIONS: Réponse de l'API des missions:", data); // AJOUTEZ CETTE LIGNE
+        console.log("LOAD MISSIONS: Réponse de l'API des missions:", data);
 
         if (!data.success || !Array.isArray(data.missions)) {
             alert("Erreur lors du chargement des missions.");
-            console.warn("LOAD MISSIONS: Données de missions invalides ou échec.", data); // AJOUTEZ CETTE LIGNE
+            console.warn("LOAD MISSIONS: Données de missions invalides ou échec.", data);
             return;
         }
 
@@ -296,10 +302,10 @@ window.loadMissions = async function(emailToLoad) {
         contAttente.innerHTML = renderTable(missionsAttente, 'attente');
         contAvenir.innerHTML = renderTable(missionsValidees, 'validee');
         contTerminees.innerHTML = renderTable(missionsTerminees, '');
-        console.log("LOAD MISSIONS: Tableaux de missions rendus avec succès."); // AJOUTEZ CETTE LIGNE
+        console.log("LOAD MISSIONS: Tableaux de missions rendus avec succès.");
     } catch (e) {
-        alert("Erreur serveur lors du chargement des missions."); // MODIFIEZ POUR ÊTRE PLUS SPÉCIFIQUE
-        console.error("LOAD MISSIONS ERROR: Erreur dans loadMissions():", e); // AJOUTEZ CETTE LIGNE
+        alert("Erreur serveur lors du chargement des missions.");
+        console.error("LOAD MISSIONS ERROR: Erreur dans loadMissions():", e);
     }
 }
 
@@ -326,7 +332,8 @@ function renderTable(missions, type = "") {
             <button class="btn-action btn-refuse" onclick="refuserMission('${m.id}')">❌</button>
             </td>`;
         } else if (type === "validee") {
-html += `<td data-label="Actions" class="actions"><button class="btn-action btn-start" onclick="openModalStartPrestation('${m.id}', '${m.clientPrenom}', '${m.clientNom}')">▶️</button></td>`;        }
+            html += `<td data-label="Actions" class="actions"><button class="btn-action btn-start" onclick="openModalStartPrestation('${m.id}', '${m.clientPrenom}', '${m.clientNom}')">▶️</button></td>`;
+        }
         html += "</tr>";
     });
 
@@ -483,24 +490,62 @@ function initializeModalListeners() {
 
     } else {
         console.warn("Certains éléments de la modale d'observation sont manquants. Nouvelle tentative d'initialisation des écouteurs de modale...");
+        // Si les éléments ne sont pas là, relancez l'initialisation après un court délai
+        // C'est utile si le HTML est injecté après le premier DOMContentLoaded.
         setTimeout(initializeModalListeners, 100);
     }
 }
 
-
 function initializeLoginForm() {
     const loginForm = document.getElementById("loginForm");
     if (loginForm && typeof login === 'function') {
+        // Supprimez l'écouteur précédent pour éviter les doublons si la fonction est appelée plusieurs fois
         loginForm.removeEventListener("submit", login);
         loginForm.addEventListener("submit", login);
         console.log("Écouteur de soumission ajouté au formulaire de connexion.");
     } else {
         console.warn("Formulaire de connexion ou fonction 'login' non disponible. Nouvelle tentative...");
-        setTimeout(initializeLoginForm, 200);
+        setTimeout(initializeLoginForm, 200); // Réessaie si le formulaire n'est pas encore là
     }
 }
 
+// FONCTION POUR CHARGER ET INJECTER LE HTML DES MODALES
+async function loadModalHtmlAndInit() {
+    try {
+        // Assurez-vous que le chemin vers viiveo-modals.html est correct sur Carrd
+        // Si Carrd le sert depuis un CDN ou un chemin spécifique, ajustez l'URL
+        const response = await fetch('viiveo-modals.html'); // Chemin relatif devrait fonctionner si dans le même dossier ou via le CDN de Carrd
+        const html = await response.text();
+
+        // Créez un div temporaire pour contenir le HTML et l'ajouter au DOM
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+
+        // Insérez le contenu dans le corps du document
+        // Assurez-vous que le HTML de viiveo-modals.html ne contient qu'un seul élément racine,
+        // ou ajustez la boucle pour ajouter tous les enfants de tempDiv.
+        while (tempDiv.firstChild) {
+            document.body.appendChild(tempDiv.firstChild);
+        }
+
+        console.log("HTML des modales chargé et injecté.");
+
+        // Maintenant que les modales sont dans le DOM, initialisez leurs écouteurs
+        initializeModalListeners();
+
+    } catch (error) {
+        console.error("Erreur lors du chargement des modales HTML :", error);
+        alert("Erreur critique: Impossible de charger l'interface utilisateur des modales.");
+    }
+}
+
+
+// Point d'entrée principal du script
 document.addEventListener('DOMContentLoaded', () => {
+    // Le formulaire de login est probablement dans le HTML principal de Carrd
     initializeLoginForm();
-    setTimeout(initializeModalListeners, 500);
+
+    // Chargez et injectez le HTML des modales (incluant la modale de scan QR)
+    // et initialisez leurs écouteurs APRES l'injection.
+    loadModalHtmlAndInit();
 });
