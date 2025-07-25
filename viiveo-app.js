@@ -72,7 +72,7 @@ function closeModal() {
 async function startQrScanner() {
     const qrReaderElement = document.getElementById("qr-reader");
     if (!qrReaderElement) {
-        console.error("Élément 'qr-reader' non trouvé.");
+        console.error("Éléments 'qr-reader' non trouvé.");
         alert("Erreur: Le scanner QR ne peut pas démarrer (élément manquant).");
         closeModal();
         return;
@@ -508,30 +508,31 @@ function initializeLoginForm() {
         setTimeout(initializeLoginForm, 200); // Réessaie si le formulaire n'est pas encore là
     }
 }
+
 // Cette fonction crée et injecte le HTML de la modale dynamiquement
 function createAndInjectModalHtml() {
     // **ATTENTION : Copiez TOUT le contenu de votre fichier viiveo-modals.html ici.**
     // Assurez-vous que c'est une chaîne de caractères sur une seule ligne ou en utilisant des backticks ` ` pour le multi-ligne.
     const modalHtml = `
-        <div id="modalOverlay" style="display: none;">
-            <div id="modalContent">
+        <div id="modalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 1000;">
+            <div id="modalContent" style="background-color: white; padding: 20px; border-radius: 8px; max-width: 90%; max-height: 90%; overflow-y: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
                 <div id="stepQR" style="display:flex; flex-direction:column; align-items:center;">
                     <h2>📸 Scanner le QR code client</h2>
-                    <div id="qr-reader"></div>
-                    <button id="btnCancelQR">Annuler</button>
+                    <div id="qr-reader" style="width: 100%; max-width: 500px;"></div>
+                    <button id="btnCancelQR" style="margin-top: 20px; padding: 10px 20px; background-color: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer;">Annuler</button>
                 </div>
 
-                <div id="stepForm" style="display:none;">
+                <div id="stepForm" style="display:none; flex-direction:column; align-items:stretch;">
                     <h2>📝 Fiche d'observation</h2>
-                    <form id="obsForm">
-                        <label>Nom du client</label>
-                        <input type="text" id="clientName" readonly />
-                        <label>Date de l'observation</label>
-                        <input type="date" id="obsDate" required />
-                        <label>État de santé</label>
-                        <textarea id="etatSante" rows="3" placeholder="Décrire l'état de santé..."></textarea>
-                        <label>État de forme</label>
-                        <select id="etatForme" required>
+                    <form id="obsForm" style="display: flex; flex-direction: column; gap: 15px;">
+                        <label for="clientName">Nom du client</label>
+                        <input type="text" id="clientName" readonly style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;" />
+                        <label for="obsDate">Date de l'observation</label>
+                        <input type="date" id="obsDate" required style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;" />
+                        <label for="etatSante">État de santé</label>
+                        <textarea id="etatSante" rows="3" placeholder="Décrire l'état de santé..." style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical;"></textarea>
+                        <label for="etatForme">État de forme</label>
+                        <select id="etatForme" required style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
                             <option value="">-- Choisir --</option>
                             <option>Très bon</option>
                             <option>Bon</option>
@@ -539,19 +540,19 @@ function createAndInjectModalHtml() {
                             <option>Faible</option>
                             <option>Très faible</option>
                         </select>
-                        <label>Environnement</label>
-                        <textarea id="environnement" rows="3" placeholder="Décrire l'environnement..."></textarea>
-                        <label>Photos (max 3)</label>
-                        <input type="file" id="photos" accept="image/*" multiple />
-                        <div id="photosPreview"></div>
-                        <button type="submit">Envoyer la fiche</button>
-                        <button type="button" id="btnCancelForm">Annuler</button>
+                        <label for="environnement">Environnement</label>
+                        <textarea id="environnement" rows="3" placeholder="Décrire l'environnement..." style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical;"></textarea>
+                        <label for="photos">Photos (max 3)</label>
+                        <input type="file" id="photos" accept="image/*" multiple style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;" />
+                        <div id="photosPreview" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;"></div>
+                        <button type="submit" style="padding: 10px 20px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px;">Envoyer la fiche</button>
+                        <button type="button" id="btnCancelForm" style="padding: 10px 20px; background-color: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">Annuler</button>
                     </form>
                 </div>
 
                 <div id="stepSuccess" style="display:none; text-align:center;">
                     <h2>✅ Fiche envoyée avec succès !</h2>
-                    <button id="btnCloseSuccess">Fermer</button>
+                    <button id="btnCloseSuccess" style="margin-top: 20px; padding: 10px 20px; background-color: #008CBA; color: white; border: none; border-radius: 5px; cursor: pointer;">Fermer</button>
                 </div>
             </div>
         </div>
