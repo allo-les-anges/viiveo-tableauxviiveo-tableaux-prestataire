@@ -508,19 +508,75 @@ function initializeLoginForm() {
         setTimeout(initializeLoginForm, 200); // Réessaie si le formulaire n'est pas encore là
     }
 }
+// Cette fonction crée et injecte le HTML de la modale dynamiquement
+function createAndInjectModalHtml() {
+    // **ATTENTION : Copiez TOUT le contenu de votre fichier viiveo-modals.html ici.**
+    // Assurez-vous que c'est une chaîne de caractères sur une seule ligne ou en utilisant des backticks ` ` pour le multi-ligne.
+    const modalHtml = `
+        <div id="modalOverlay" style="display: none;">
+            <div id="modalContent">
+                <div id="stepQR" style="display:flex; flex-direction:column; align-items:center;">
+                    <h2>📸 Scanner le QR code client</h2>
+                    <div id="qr-reader"></div>
+                    <button id="btnCancelQR">Annuler</button>
+                </div>
 
+                <div id="stepForm" style="display:none;">
+                    <h2>📝 Fiche d'observation</h2>
+                    <form id="obsForm">
+                        <label>Nom du client</label>
+                        <input type="text" id="clientName" readonly />
+                        <label>Date de l'observation</label>
+                        <input type="date" id="obsDate" required />
+                        <label>État de santé</label>
+                        <textarea id="etatSante" rows="3" placeholder="Décrire l'état de santé..."></textarea>
+                        <label>État de forme</label>
+                        <select id="etatForme" required>
+                            <option value="">-- Choisir --</option>
+                            <option>Très bon</option>
+                            <option>Bon</option>
+                            <option>Moyen</option>
+                            <option>Faible</option>
+                            <option>Très faible</option>
+                        </select>
+                        <label>Environnement</label>
+                        <textarea id="environnement" rows="3" placeholder="Décrire l'environnement..."></textarea>
+                        <label>Photos (max 3)</label>
+                        <input type="file" id="photos" accept="image/*" multiple />
+                        <div id="photosPreview"></div>
+                        <button type="submit">Envoyer la fiche</button>
+                        <button type="button" id="btnCancelForm">Annuler</button>
+                    </form>
+                </div>
+
+                <div id="stepSuccess" style="display:none; text-align:center;">
+                    <h2>✅ Fiche envoyée avec succès !</h2>
+                    <button id="btnCloseSuccess">Fermer</button>
+                </div>
+            </div>
+        </div>
+    `;
+    // Injecte le HTML à la fin du corps du document
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    console.log("Modal HTML injected dynamically via JS.");
+}
 // ... (votre code existant) ...
 
 // SUPPRIMEZ cette fonction entière car le HTML est maintenant statique dans Carrd
 // async function loadModalHtmlAndInit() { ... }
 
 // Modifiez votre gestionnaire DOMContentLoaded
+// Point d'entrée principal du script
 document.addEventListener('DOMContentLoaded', () => {
-    initializeLoginForm();
+    initializeLoginForm(); // Initialise le formulaire de connexion
 
-    // Puisque viiveo-modals.html est maintenant directement injecté via Carrd Embed
-    // et donc déjà dans le DOM au moment de DOMContentLoaded,
-    // vous pouvez appeler initializeModalListeners directement (ou avec un petit délai si besoin).
-    initializeModalListeners(); // Appelez-la directement ou avec un setTimeout très court si les éléments ont un léger délai pour être prêts.
-                                // setTimeout(initializeModalListeners, 100); pourrait être plus sûr.
+    // Injecte le HTML de la modale dynamiquement via JavaScript
+    createAndInjectModalHtml();
+
+    // Attendre un court instant pour que le DOM soit mis à jour
+    // avant d'initialiser les écouteurs de la modale
+    setTimeout(() => {
+        initializeModalListeners();
+        console.log("initializeModalListeners appelée après injection et délai.");
+    }, 100); // 100ms est un bon point de départ, ajustez si nécessaire
 });
