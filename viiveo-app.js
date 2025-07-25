@@ -560,49 +560,8 @@ function createAndInjectModalHtml() {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     console.log("Modal HTML injected dynamically via JS.");
 }
-async function loadModalHtmlAndInit() {
-    console.log("loadModalHtmlAndInit appelée.");
-    try {
-        const response = await fetch('viiveo-modals.html'); // Votre chemin relatif actuel
-        if (!response.ok) {
-            throw new Error(`Erreur HTTP: ${response.status} - ${response.statusText}`);
-        }
-        const modalHtml = await response.text();
-        console.log("1. HTML des modales reçu (début) :", modalHtml.substring(0, 200) + "..."); // Affiche le début du HTML
-        console.log("1. HTML des modales reçu (longueur) :", modalHtml.length); // Affiche la longueur
 
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = modalHtml;
-        console.log("2. tempDiv.innerHTML défini. tempDiv.firstChild :", tempDiv.firstChild);
-
-        const modalOverlayElement = tempDiv.querySelector('#modalOverlay');
-        console.log("3. modalOverlayElement trouvé dans tempDiv :", modalOverlayElement);
-
-        if (modalOverlayElement) {
-            // IMPORTANT : Supprimez toute instance précédente de la modale si elle existe (pour éviter les duplicata en cas de rechargement partiel ou de tests).
-            const existingModal = document.getElementById('modalOverlay');
-            if (existingModal) {
-                existingModal.remove();
-                console.log("Ancienne #modalOverlay supprimée.");
-            }
-
-            document.body.appendChild(modalOverlayElement); // Injecte l'élément directement
-            console.log("4. HTML des modales chargé et injecté dans le body.");
-
-            // Initialisation des écouteurs après l'injection
-            // Si initializeModalListeners() a des problèmes de timing, cela les montrera.
-            setTimeout(initializeModalListeners, 100);
-            console.log("5. initializeModalListeners programmée avec délai.");
-
-        } else {
-            console.error("ERREUR CRITIQUE: L'élément #modalOverlay N'A PAS ÉTÉ TROUVÉ dans le HTML des modales chargé. Vérifiez viiveo-modals.html !");
-            // Si ce message apparaît, le fichier HTML que vous chargez ne contient pas correctement la balise #modalOverlay.
-        }
-
-    } catch (error) {
-        console.error("Échec du chargement ou de l'initialisation des modales:", error);
-    }
-}// Point d'entrée principal du script
+// Point d'entrée principal du script
 document.addEventListener('DOMContentLoaded', () => {
     initializeLoginForm(); // Initialise le formulaire de connexion
 
