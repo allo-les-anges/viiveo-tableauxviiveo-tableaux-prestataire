@@ -326,8 +326,7 @@ function renderTable(missions, type = "") {
             <button class="btn-action btn-refuse" onclick="refuserMission('${m.id}')">❌</button>
             </td>`;
         } else if (type === "validee") {
-            html += `<td data-label="Actions" class="actions"><button class="btn-action btn-start" onclick="handleStartPrestation('${m.id}')">▶️</button></td>`;
-        }
+html += `<td data-label="Actions" class="actions"><button class="btn-action btn-start" onclick="openModalStartPrestation('${m.id}', '${m.clientPrenom}', '${m.clientNom}')">▶️</button></td>`;        }
         html += "</tr>";
     });
 
