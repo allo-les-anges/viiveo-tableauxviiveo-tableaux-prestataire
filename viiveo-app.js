@@ -1,4 +1,4 @@
-// viiveo-app.js
+// viiveo-app.js - À placer sur GitHub
 
 // Variables pour l'état de la mission et du prestataire
 let currentMissionId = null;
@@ -49,9 +49,9 @@ function openModalStartPrestation(missionId, clientPrenom, clientNom) {
 
 function closeModal() {
     modalOverlay.style.display = "none";
-    clearForm();
+    clearForm(document.getElementById("obsForm")); // Utilisez clearForm avec l'ID du formulaire
     const qrReaderInstance = Html5Qrcode.getCameras().find(c => c.id === "qr-reader");
-    if (qrReaderInstance && qrReaderInstance.isScanning) { // Corrected isScanning property access
+    if (qrReaderInstance && qrReaderInstance.isScanning) {
         qrReaderInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
     }
 }
@@ -134,6 +134,7 @@ function getGeolocationAndShowForm() {
                     message = "❌ Erreur inconnue.";
             }
             alert(message);
+            console.error("Erreur de géolocalisation:", error);
             closeModal();
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -147,7 +148,7 @@ function showForm() {
     setTodayDate();
 }
 
-function clearForm() {
+function clearFormFields() { // Renommée pour éviter conflit avec la fonction utilitaire clearForm
     obsDateInput.value = "";
     etatSanteInput.value = "";
     etatFormeInput.value = "";
@@ -176,6 +177,7 @@ async function login() {
     }
     message.textContent = "";
     show(loader, true);
+    tempDisable(document.querySelector(".viiveo-login button"), 3000); // Désactive le bouton 3s
 
     try {
         const callbackName = 'cbLogin' + Date.now();
@@ -235,7 +237,7 @@ window.loadMissions = async function(emailToLoad) {
 
 function renderTable(missions, type = "") {
     if (!missions.length) return "<p>Aucune mission.</p>";
-    let html = `<table><thead><tr><th>ID</th><th>Client</th><th>Adresse</th><th>Service</th><th>Date</th><th>Heure</th>`;
+    let html = `<table class="missions-table"><thead><tr><th>ID</th><th>Client</th><th>Adresse</th><th>Service</th><th>Date</th><th>Heure</th>`;
     if (type) html += "<th>Actions</th>";
     html += "</tr></thead><tbody>";
 
@@ -244,19 +246,19 @@ function renderTable(missions, type = "") {
         const heure = new Date(m.heure);
         const formattedHeure = `${String(heure.getHours()).padStart(2, '0')}h${String(heure.getMinutes()).padStart(2, '0')}`;
         html += `<tr>
-            <td>${m.id}</td>
-            <td>${m.client}</td>
-            <td>${m.adresse}</td>
-            <td>${m.service}</td>
-            <td>${date}</td>
-            <td>${formattedHeure}</td>`;
+            <td data-label="ID">${m.id}</td>
+            <td data-label="Client">${m.client}</td>
+            <td data-label="Adresse">${m.adresse}</td>
+            <td data-label="Service">${m.service}</td>
+            <td data-label="Date">${date}</td>
+            <td data-label="Heure">${formattedHeure}</td>`;
         if (type === "attente") {
-            html += `<td>
-            <button onclick="validerMission('${m.id}')">✅</button>
-            <button onclick="refuserMission('${m.id}')">❌</button>
+            html += `<td data-label="Actions" class="actions">
+            <button class="btn-action btn-validate" onclick="validerMission('${m.id}')">✅</button>
+            <button class="btn-action btn-refuse" onclick="refuserMission('${m.id}')">❌</button>
             </td>`;
         } else if (type === "validee") {
-            html += `<td><button onclick="handleStartPrestation('${m.id}')">▶️</button></td>`;
+            html += `<td data-label="Actions" class="actions"><button class="btn-action btn-start" onclick="handleStartPrestation('${m.id}')">▶️</button></td>`;
         }
         html += "</tr>";
     });
@@ -394,14 +396,60 @@ window.startPrestation = function(missionId) {
     }
 
     const clientNom = row.children[1]?.textContent.trim() || "";
+    // Note: clientPrenom n'est pas extrait directement de la table ici.
+    // Assurez-vous que votre tableau ou votre backend fournit le prénom si nécessaire.
+    // Pour l'instant, je le laisse comme une chaîne vide si non disponible.
     const clientPrenom = row.children[1]?.dataset.prenom?.trim() || clientNom.split(" ")[0];
 
     openModalStartPrestation(missionId, clientPrenom, clientNom);
 };
 
+// Fonctions utilitaires génériques (ajoutées depuis votre dernier embed)
+// 🧼 Fonction pour nettoyer les inputs d’un formulaire (corrigée pour un usage plus générique)
+function clearForm(formElement) {
+    if (!formElement) return;
+    Array.from(formElement.elements).forEach(el => {
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+            el.value = '';
+        } else if (el.tagName === 'SELECT') {
+            el.selectedIndex = 0; // Réinitialise la sélection à la première option
+        }
+    });
+}
+
+// ⌛ Fonction pour désactiver un bouton temporairement
+function tempDisable(btn, ms = 1000) {
+    if (!btn) return;
+    btn.disabled = true;
+    setTimeout(() => {
+        btn.disabled = false;
+    }, ms);
+}
+
+// 💡 Fonction pour créer un élément HTML depuis une chaîne HTML
+function createElementFromHTML(htmlString) {
+    const div = document.createElement('div');
+    div.innerHTML = htmlString.trim();
+    return div.firstChild; // Retourne le premier élément enfant
+}
+
+
 document.addEventListener('DOMContentLoaded', () => {
-    const loginButton = document.getElementById("loginButton");
-    if (loginButton) {
-        loginButton.addEventListener("click", login);
+    const loginForm = document.getElementById("loginForm"); // Ciblez le formulaire par son ID
+    if (loginForm) {
+        // S'assure que la fonction login est bien chargée AVANT d'attacher le listener
+        if (typeof login === 'function') {
+            loginForm.addEventListener("submit", login); // Attachez l'événement submit au formulaire
+        } else {
+            console.error("La fonction 'login' n'est pas encore définie. Veuillez recharger la page.");
+            // Tentative de réattacher après un court délai au cas où
+            setTimeout(() => {
+                if (typeof login === 'function') {
+                    loginForm.addEventListener("submit", login);
+                } else {
+                     console.error("La fonction 'login' est toujours indéfinie après délai. Problème de chargement JS.");
+                }
+            }, 500);
+        }
     }
 });
