@@ -264,7 +264,7 @@ input[type="email"], input[type="password"] {
     padding: 20px;
     width: 100%;
     max-width: 480px; /* Conserver ou augmenter si vous voulez une modale plus large */
-    max-height: 90vh;
+    max-height: 180vh;
     overflow-y: auto;
     box-sizing: border-box;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
@@ -275,7 +275,7 @@ input[type="email"], input[type="password"] {
 #qr-reader {
     width: 100% !important;
     height: auto !important;
-    /* aspect-ratio: 1 / 1; */ /* <--- C'EST CETTE LIGNE QU'IL FAUT COMMENTER OU SUPPRIMER */
+    aspect-ratio: 1 / 1; /* carré */
     max-height: 350px;
     margin: 0 auto;
 }
