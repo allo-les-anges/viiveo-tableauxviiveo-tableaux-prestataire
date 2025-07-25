@@ -509,43 +509,18 @@ function initializeLoginForm() {
     }
 }
 
-// FONCTION POUR CHARGER ET INJECTER LE HTML DES MODALES
-async function loadModalHtmlAndInit() {
-    try {
-        // Assurez-vous que le chemin vers viiveo-modals.html est correct sur Carrd
-        // Si Carrd le sert depuis un CDN ou un chemin spécifique, ajustez l'URL
-        const response = await fetch('viiveo-modals.html'); // Chemin relatif devrait fonctionner si dans le même dossier ou via le CDN de Carrd
-        const html = await response.text();
+// ... (votre code existant) ...
 
-        // Créez un div temporaire pour contenir le HTML et l'ajouter au DOM
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = html;
+// SUPPRIMEZ cette fonction entière car le HTML est maintenant statique dans Carrd
+// async function loadModalHtmlAndInit() { ... }
 
-        // Insérez le contenu dans le corps du document
-        // Assurez-vous que le HTML de viiveo-modals.html ne contient qu'un seul élément racine,
-        // ou ajustez la boucle pour ajouter tous les enfants de tempDiv.
-        while (tempDiv.firstChild) {
-            document.body.appendChild(tempDiv.firstChild);
-        }
-
-        console.log("HTML des modales chargé et injecté.");
-
-        // Maintenant que les modales sont dans le DOM, initialisez leurs écouteurs
-        initializeModalListeners();
-
-    } catch (error) {
-        console.error("Erreur lors du chargement des modales HTML :", error);
-        alert("Erreur critique: Impossible de charger l'interface utilisateur des modales.");
-    }
-}
-
-
-// Point d'entrée principal du script
+// Modifiez votre gestionnaire DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
-    // Le formulaire de login est probablement dans le HTML principal de Carrd
     initializeLoginForm();
 
-    // Chargez et injectez le HTML des modales (incluant la modale de scan QR)
-    // et initialisez leurs écouteurs APRES l'injection.
-    loadModalHtmlAndInit();
+    // Puisque viiveo-modals.html est maintenant directement injecté via Carrd Embed
+    // et donc déjà dans le DOM au moment de DOMContentLoaded,
+    // vous pouvez appeler initializeModalListeners directement (ou avec un petit délai si besoin).
+    initializeModalListeners(); // Appelez-la directement ou avec un setTimeout très court si les éléments ont un léger délai pour être prêts.
+                                // setTimeout(initializeModalListeners, 100); pourrait être plus sûr.
 });
