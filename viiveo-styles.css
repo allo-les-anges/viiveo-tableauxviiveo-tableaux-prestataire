@@ -275,9 +275,14 @@ input[type="email"], input[type="password"] {
 #qr-reader {
     width: 100% !important;
     height: auto !important;
-    aspect-ratio: 1 / 1; /* carré */
     max-height: 350px;
     margin: 0 auto;
+}
+
+#qr-reader video, #qr-reader canvas {
+    width: 100% !important;
+    height: auto !important;
+    object-fit: cover !important;
 }
 
 // ... Le reste de votre CSS reste inchangé
