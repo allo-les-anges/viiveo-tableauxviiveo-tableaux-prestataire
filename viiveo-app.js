@@ -38,10 +38,11 @@ function openModalStartPrestation(missionId, clientPrenom, clientNom) {
     currentPrestatairePrenom = window.currentPrenom;
     currentPrestataireNom = window.currentNom;
 
-    stepQR.style.display = "flex";
+    // S'assurer que les étapes sont dans le bon ordre d'affichage
+    stepQR.style.display = "flex"; // Affiche le scanner QR
     stepForm.style.display = "none";
     stepSuccess.style.display = "none";
-    modalOverlay.style.display = "flex"; // REND LA MODALE VISIBLE ICI
+    modalOverlay.style.display = "flex"; // Rend la modale visible
 
     startQrScanner();
 }
@@ -55,18 +56,11 @@ function closeModal() {
     if (obsForm) {
         clearForm(obsForm);
     }
-    // Tentative d'arrêt de toutes les instances Html5Qrcode (plus robuste)
-    Html5Qrcode.getCameras().forEach(camera => {
-        if (camera && camera.isScanning) {
-            camera.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
-        }
-    });
-    // Si vous avez un Html5QrcodeScanner instancié directement (pas par ID)
-    const qrReaderInstance = window.qrScannerInstance; // Assurez-vous que cette variable est définie si vous l'utilisez
-    if (qrReaderInstance && qrReaderInstance.isScanning) {
-        qrReaderInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner (instance):", err));
+    // Arrête le scanner si une instance est active
+    if (window.qrScannerInstance && window.qrScannerInstance.isScanning) {
+        window.qrScannerInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
+        window.qrScannerInstance = null; // Nettoyer la référence
     }
-
 }
 
 async function startQrScanner() {
@@ -79,12 +73,9 @@ async function startQrScanner() {
     }
     qrReaderElement.innerHTML = ""; // Nettoie l'élément avant de redémarrer le scanner
 
-    // IMPORTANT : Utilisez une variable globale pour l'instance du scanner si vous ne voulez qu'une seule instance active
-    // Ou assurez-vous de bien la gérer. Ici, on crée une nouvelle instance à chaque appel.
+    // Crée une nouvelle instance du scanner et la stocke pour pouvoir l'arrêter
     const qrReader = new Html5Qrcode("qr-reader");
-
-    // Stockez l'instance si vous voulez la référencer facilement pour l'arrêter
-    // window.qrScannerInstance = qrReader; // Décommentez si vous utilisez window.qrScannerInstance dans closeModal
+    window.qrScannerInstance = qrReader; // Stocke l'instance globalement
 
     qrReader.start(
         { facingMode: "environment" },
@@ -513,10 +504,11 @@ function initializeLoginForm() {
 function createAndInjectModalHtml() {
     // **ATTENTION : Copiez TOUT le contenu de votre fichier viiveo-modals.html ici.**
     // Assurez-vous que c'est une chaîne de caractères sur une seule ligne ou en utilisant des backticks ` ` pour le multi-ligne.
+    // NOTE TRÈS IMPORTANTE : Le style 'display:flex;' sur #stepQR doit être 'display:none;' initialement.
     const modalHtml = `
-        <div id="modalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 1000;">
+        <div id="modalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000;">
             <div id="modalContent" style="background-color: white; padding: 20px; border-radius: 8px; max-width: 90%; max-height: 90%; overflow-y: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-                <div id="stepQR" style="display:flex; flex-direction:column; align-items:center;">
+                <div id="stepQR" style="display:none; flex-direction:column; align-items:center;">
                     <h2>📸 Scanner le QR code client</h2>
                     <div id="qr-reader" style="width: 100%; max-width: 500px;"></div>
                     <button id="btnCancelQR" style="margin-top: 20px; padding: 10px 20px; background-color: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer;">Annuler</button>
@@ -560,6 +552,23 @@ function createAndInjectModalHtml() {
     // Injecte le HTML à la fin du corps du document
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     console.log("Modal HTML injected dynamically via JS.");
+
+    // **DÉBUT DU BLOC AJOUTÉ POUR ROBUSTESSE**
+    // Assurez-vous que toutes les étapes de la modale sont cachées après l'injection
+    // Ce setTimeout est là pour donner un petit délai au navigateur pour que les éléments soient bien en place.
+    setTimeout(() => {
+        const modalOverlay = document.getElementById("modalOverlay");
+        const stepQR = document.getElementById("stepQR");
+        const stepForm = document.getElementById("stepForm");
+        const stepSuccess = document.getElementById("stepSuccess");
+
+        if (modalOverlay) modalOverlay.style.display = "none";
+        if (stepQR) stepQR.style.display = "none";
+        if (stepForm) stepForm.style.display = "none";
+        if (stepSuccess) stepSuccess.style.display = "none";
+        console.log("État initial des étapes de la modale défini sur 'none' après injection.");
+    }, 50); // Un très court délai suffit généralement
+    // **FIN DU BLOC AJOUTÉ POUR ROBUSTESSE**
 }
 
 // Point d'entrée principal du script
