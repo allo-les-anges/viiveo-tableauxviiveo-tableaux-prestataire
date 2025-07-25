@@ -272,11 +272,11 @@ input[type="email"], input[type="password"] {
     flex-direction: column;
 }
 
-#qr-reader {
+#qr-reader video, #qr-reader canvas { /* Cibler la vidéo ou le canvas à l'intérieur */
     width: 100% !important;
-    height: auto !important;
-    max-height: 350px;
-    margin: 0 auto;
+    height: auto !important; /* Garde l'aspect ratio de la source vidéo */
+    object-fit: cover !important; /* Pour remplir le conteneur sans déformation si besoin */
+    /* max-width et max-height pourraient aussi être utiles si le flux est trop grand */
 }
 
 /* Styles pour les labels et inputs/select/textarea à l'intérieur de la modale */
