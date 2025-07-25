@@ -205,6 +205,7 @@ function show(el, visible) {
 }
 
 async function login() {
+    console.log("LOGIN: Fonction login() appelée."); // AJOUTEZ CETTE LIGNE
     const email = document.getElementById("email")?.value.trim();
     const password = document.getElementById("password")?.value.trim();
     const message = document.getElementById("message");
@@ -214,18 +215,29 @@ async function login() {
 
     if (!email || !password) {
         if (message) message.textContent = "Champs requis.";
+        console.log("LOGIN: Champs email/password requis."); // AJOUTEZ CETTE LIGNE
         return;
     }
     if (message) message.textContent = "";
     show(loader, true);
     tempDisable(document.querySelector(".viiveo-login button"), 3000); // Désactive le bouton 3s
+    console.log("LOGIN: Tentative de connexion avec email:", email); // AJOUTEZ CETTE LIGNE
 
     try {
         const callbackName = 'cbLogin' + Date.now();
+        // Vérifier si window.webAppUrl est bien défini avant de l'utiliser
+        if (!window.webAppUrl) {
+            console.error("LOGIN ERROR: window.webAppUrl n'est pas défini !"); // AJOUTEZ CETTE LIGNE
+            if (message) message.textContent = "Erreur de configuration: URL de l'application manquante.";
+            return;
+        }
         const url = `${window.webAppUrl}?type=loginpresta&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+        console.log("LOGIN: URL d'API générée:", url); // AJOUTEZ CETTE LIGNE
         const data = await callApiJsonp(url, callbackName);
+        console.log("LOGIN: Réponse de l'API de login:", data); // AJOUTEZ CETTE LIGNE
         if (!data.success) {
             if (message) message.textContent = data.message || "Connexion échouée.";
+            console.log("LOGIN: Connexion échouée. Message:", data.message); // AJOUTEZ CETTE LIGNE
             return;
         }
 
@@ -234,11 +246,13 @@ async function login() {
         show(form, false);
         show(missionsBlock, true);
         await loadMissions(window.currentEmail);
+        console.log("LOGIN: Missions chargées après connexion réussie."); // AJOUTEZ CETTE LIGNE
     } catch (err) {
-        if (message) message.textContent = "Erreur serveur.";
-        console.error(err);
+        if (message) message.textContent = "Erreur serveur ou réseau."; // MODIFIEZ POUR ÊTRE PLUS GÉNÉRIQUE
+        console.error("LOGIN ERROR: Erreur dans la fonction login():", err); // AJOUTEZ CETTE LIGNE
     } finally {
         show(loader, false);
+        console.log("LOGIN: Fonction login() terminée."); // AJOUTEZ CETTE LIGNE
     }
 }
 
@@ -257,11 +271,20 @@ window.loadMissions = async function(emailToLoad) {
 
     try {
         const callbackName = 'cbMissions' + Date.now();
+        // Vérifier si window.webAppUrl est bien défini avant de l'utiliser
+        if (!window.webAppUrl) { // AJOUTEZ CETTE VÉRIFICATION
+            console.error("LOAD MISSIONS ERROR: window.webAppUrl n'est pas défini !"); // AJOUTEZ CETTE LIGNE
+            alert("Erreur de configuration: URL de l'application manquante pour charger les missions.");
+            return;
+        }
         const url = `${window.webAppUrl}?type=missionspresta&email=${encodeURIComponent(emailToLoad)}`;
+        console.log("LOAD MISSIONS: URL d'API générée:", url); // AJOUTEZ CETTE LIGNE
         const data = await callApiJsonp(url, callbackName);
+        console.log("LOAD MISSIONS: Réponse de l'API des missions:", data); // AJOUTEZ CETTE LIGNE
 
         if (!data.success || !Array.isArray(data.missions)) {
             alert("Erreur lors du chargement des missions.");
+            console.warn("LOAD MISSIONS: Données de missions invalides ou échec.", data); // AJOUTEZ CETTE LIGNE
             return;
         }
 
@@ -273,9 +296,10 @@ window.loadMissions = async function(emailToLoad) {
         contAttente.innerHTML = renderTable(missionsAttente, 'attente');
         contAvenir.innerHTML = renderTable(missionsValidees, 'validee');
         contTerminees.innerHTML = renderTable(missionsTerminees, '');
+        console.log("LOAD MISSIONS: Tableaux de missions rendus avec succès."); // AJOUTEZ CETTE LIGNE
     } catch (e) {
-        alert("Erreur serveur.");
-        console.error(e);
+        alert("Erreur serveur lors du chargement des missions."); // MODIFIEZ POUR ÊTRE PLUS SPÉCIFIQUE
+        console.error("LOAD MISSIONS ERROR: Erreur dans loadMissions():", e); // AJOUTEZ CETTE LIGNE
     }
 }
 
