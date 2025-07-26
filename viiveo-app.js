@@ -9,7 +9,7 @@ let heureDebut = null;
 
 // Ajoutez cette variable globale pour l'instance du scanner.
 // Cela permet de la nettoyer correctement à la fermeture de la modale.
-let qrScannerInstance = null; // Déplacé hors de la fonction startQrScanner pour une gestion globale
+let qrScannerInstance = null; // Correctement déclaré en global
 
 // Fonctions liées au scanner et à la modale
 function setTodayDate(obsDateInput) {
@@ -44,7 +44,8 @@ function openModalStartPrestation(missionId, clientPrenom, clientNom) {
 
     // S'assurer que les étapes sont dans le bon ordre d'affichage
     // IMPORTANT : On masque toutes les étapes d'abord pour éviter les flashs.
-    stepQR.style.display = "none"; // Sera mis à flex par startQrScanner après initialisation
+    // stepQR.style.display sera mis à "flex" dans startQrScanner()
+    stepQR.style.display = "none";
     stepForm.style.display = "none";
     stepSuccess.style.display = "none";
     modalOverlay.style.display = "flex"; // Rend la modale visible
@@ -64,13 +65,14 @@ function closeModal() {
     }
     const obsForm = document.getElementById("obsForm");
     if (obsForm) {
-        clearForm(obsForm);
+        clearForm(obsForm); // Assurez-vous que cette fonction existe et vide bien les champs
     }
     // Arrête le scanner si une instance est active
-    if (qrScannerInstance && qrScannerInstance.isScanning) { // Utilisez la variable globale
+    // Correction: Utilisez isScanning seulement si qrScannerInstance n'est pas null
+    if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
         qrScannerInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
-        qrScannerInstance = null; // Nettoyer la référence
     }
+    qrScannerInstance = null; // Nettoyer la référence de manière inconditionnelle après tentative d'arrêt
 }
 
 async function startQrScanner() {
@@ -91,22 +93,45 @@ async function startQrScanner() {
 
     // Nettoie l'élément avant de redémarrer le scanner.
     // C'est très important pour éviter les problèmes si le scanner a été arrêté/redémarré.
-    qrReaderElement.innerHTML = ""; 
+    qrReaderElement.innerHTML = "";
+
+    // Si une instance existe déjà et est active, arrêtez-la et mettez-la à null pour éviter les conflits
+    if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
+        try {
+            await qrScannerInstance.stop();
+            console.log("Ancienne instance du scanner arrêtée.");
+        } catch (error) {
+            console.warn("Erreur lors de l'arrêt d'une ancienne instance de scanner:", error);
+        } finally {
+            qrScannerInstance = null; // Nettoyage de l'instance, même si l'arrêt a échoué
+        }
+    }
 
     // Crée une nouvelle instance du scanner et la stocke pour pouvoir l'arrêter
     qrScannerInstance = new Html5Qrcode("qr-reader"); // Affectation à la variable globale
-    
+
     console.log("Tentative de démarrage du scanner QR..."); // AJOUTÉ POUR LE DÉBOGAGE
 
     try {
         await qrScannerInstance.start( // Utilisez la variable globale ici
-            { facingMode: "environment" },
-            { fps: 10, qrbox: 250 }, // Gardons qrbox: 250, il était visible sur une de vos photos
+            { facingMode: "environment" }, // Utilise la caméra arrière
+            {
+                fps: 10, // Nombre d'images par seconde pour scanner
+                qrbox: { width: 250, height: 250 }, // Taille du carré de détection (utilisez l'objet pour html5-qrcode v2.x)
+                aspectRatio: 1.333334 // Recommandé pour stabiliser le flux vidéo
+            },
             async (decodedText) => {
-                qrScannerInstance.stop(); // Arrête le scanner après un scan réussi
+                // Cette fonction est appelée quand un QR code est détecté
+                console.log(`QR Code détecté: ${decodedText}`);
                 try {
-                    console.log("🔍 Texte QR scanné :", decodedText);
+                    // Arrête le scanner immédiatement après la détection
+                    if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
+                        await qrScannerInstance.stop();
+                        qrScannerInstance = null; // Réinitialise l'instance
+                        console.log("Scanner arrêté après détection réussie.");
+                    }
 
+                    // Votre logique de traitement du QR code ici
                     const url = new URL(decodedText);
                     const idClient = url.searchParams.get("idclient") || url.searchParams.get("clientId");
                     if (!idClient) throw new Error("QR invalide : idclient manquant");
@@ -131,20 +156,22 @@ async function startQrScanner() {
                     getGeolocationAndShowForm();
 
                 } catch (err) {
-                    alert("Erreur lors du scan QR : " + err.message);
-                    console.error("Erreur dans startQrScanner (callback de succès):", err); // Détail du log
+                    alert("Erreur lors du scan QR : " + (err.message || "Erreur inconnue")); // Utilise err.message ou une string générique
+                    console.error("Erreur dans startQrScanner (callback de succès - détails complètes):", err); // Détail du log
                     closeModal();
                 }
             },
             (errorMessage) => {
-                // Cette fonction est appelée en cas d'erreur ou d'échec de lecture continu
-                // Ne pas alerter l'utilisateur constamment, juste logguer
+                // Cette fonction est appelée pour les erreurs de progression (par exemple, pas de QR code trouvé)
                 // console.warn("QR Scan progress error:", errorMessage); // Re-commenté comme il peut être trop verbeux
             }
         );
+        console.log("Scanner QR démarré avec succès.");
     } catch (err) {
-        alert("Impossible d’activer la caméra. Assurez-vous d'avoir donné les permissions.");
-        console.error("Erreur d'initialisation de la caméra (détails):", err); // Log plus détaillé
+        // Cette fonction est appelée si le scanner ne peut pas démarrer du tout (par ex. problème de caméra, permissions)
+        alert("Impossible d’activer la caméra. Assurez-vous d'avoir donné les permissions et que la caméra n'est pas utilisée par une autre application.");
+        // TRÈS IMPORTANT: Afficher l'objet d'erreur complet ici
+        console.error("Erreur d'initialisation de la caméra (détails complètes):", err);
         closeModal();
     }
 }
@@ -199,7 +226,7 @@ function showForm() {
     }
 
     stepQR.style.display = "none";
-    stepForm.style.display = "flex"; // Changed from "block" to "flex" to match #modalContent layout
+    stepForm.style.display = "flex"; // Correctement en "flex"
     clientNameInput.value = `${currentClientPrenom} ${currentClientNom}`;
     setTodayDate(obsDateInput);
 }
@@ -384,7 +411,13 @@ function clearForm(formElement) {
             el.selectedIndex = 0;
         }
     });
+    // Réinitialisation spécifique du champ de fichier et de la prévisualisation
+    const photosInput = formElement.querySelector("#photos");
+    if (photosInput) photosInput.value = "";
+    const photosPreview = formElement.querySelector("#photosPreview");
+    if (photosPreview) photosPreview.innerHTML = "";
 }
+
 
 function tempDisable(btn, ms = 1000) {
     if (!btn) return;
@@ -482,7 +515,7 @@ function initializeModalListeners() {
                 const json = await res.json();
                 if (json.success) {
                     stepForm.style.display = "none";
-                    stepSuccess.style.display = "block";
+                    stepSuccess.style.display = "block"; // Utiliser "block" ici car c'est un div simple, pas flex
                     if (typeof window.loadMissions === 'function' && window.currentEmail) {
                         window.loadMissions(window.currentEmail);
                     }
@@ -496,9 +529,10 @@ function initializeModalListeners() {
         });
 
         // Attachez les écouteurs pour les boutons de la modale ici
-        if (document.getElementById("btnCancelQR")) document.getElementById("btnCancelQR").onclick = closeModal;
-        if (document.getElementById("btnCancelForm")) document.getElementById("btnCancelForm").onclick = closeModal;
-        if (document.getElementById("btnCloseSuccess")) document.getElementById("btnCloseSuccess").onclick = closeModal;
+        // Utilisation de querySelector pour être plus robuste si l'ID n'est pas unique
+        if (document.querySelector("#btnCancelQR")) document.querySelector("#btnCancelQR").onclick = closeModal;
+        if (document.querySelector("#btnCancelForm")) document.querySelector("#btnCancelForm").onclick = closeModal;
+        if (document.querySelector("#btnCloseSuccess")) document.querySelector("#btnCloseSuccess").onclick = closeModal;
 
         console.log("Écouteurs de la modale d'observation initialisés.");
 
@@ -514,7 +548,7 @@ function initializeLoginForm() {
     const loginForm = document.getElementById("loginForm");
     if (loginForm && typeof login === 'function') {
         // Supprimez l'écouteur précédent pour éviter les doublons si la fonction est appelée plusieurs fois
-        loginForm.removeEventListener("submit", login);
+        loginForm.removeEventListener("submit", login); // Supprime l'écouteur si déjà présent
         loginForm.addEventListener("submit", login);
         console.log("Écouteur de soumission ajouté au formulaire de connexion.");
     } else {
@@ -525,29 +559,28 @@ function initializeLoginForm() {
 
 // Cette fonction crée et injecte le HTML de la modale dynamiquement
 function createAndInjectModalHtml() {
-    // **ATTENTION : Copiez TOUT le contenu de votre fichier viiveo-modals.html ici.**
-    // Assurez-vous que c'est une chaîne de caractères sur une seule ligne ou en utilisant des backticks ` ` pour le multi-ligne.
-    // NOTE TRÈS IMPORTANTE : Le style 'display:flex;' sur #stepQR doit être 'display:none;' initialement.
+    // Correction: Assurez-vous que le HTML ici est exactement ce qui est dans votre fichier HTML séparé,
+    // en prêtant attention aux styles "display".
     const modalHtml = `
-        <div id="modalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000;">
-            <div id="modalContent" style="background-color: white; padding: 20px; border-radius: 8px; max-width: 90%; max-height: 90%; overflow-y: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+        <div id="modalOverlay">
+            <div id="modalContent">
                 <div id="stepQR" style="display:none; flex-direction:column; align-items:center;">
                     <h2>📸 Scanner le QR code client</h2>
-                    <div id="qr-reader" style="width: 100%; max-width: 500px;"></div>
-                    <button id="btnCancelQR" style="margin-top: 20px; padding: 10px 20px; background-color: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer;">Annuler</button>
+                    <div id="qr-reader"></div>
+                    <button id="btnCancelQR">Annuler</button>
                 </div>
 
                 <div id="stepForm" style="display:none; flex-direction:column; align-items:stretch;">
                     <h2>📝 Fiche d'observation</h2>
-                    <form id="obsForm" style="display: flex; flex-direction: column; gap: 15px;">
+                    <form id="obsForm">
                         <label for="clientName">Nom du client</label>
-                        <input type="text" id="clientName" readonly style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;" />
+                        <input type="text" id="clientName" readonly />
                         <label for="obsDate">Date de l'observation</label>
-                        <input type="date" id="obsDate" required style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;" />
+                        <input type="date" id="obsDate" required />
                         <label for="etatSante">État de santé</label>
-                        <textarea id="etatSante" rows="3" placeholder="Décrire l'état de santé..." style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical;"></textarea>
+                        <textarea id="etatSante" rows="3" placeholder="Décrire l'état de santé..."></textarea>
                         <label for="etatForme">État de forme</label>
-                        <select id="etatForme" required style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                        <select id="etatForme" required>
                             <option value="">-- Choisir --</option>
                             <option>Très bon</option>
                             <option>Bon</option>
@@ -556,18 +589,18 @@ function createAndInjectModalHtml() {
                             <option>Très faible</option>
                         </select>
                         <label for="environnement">Environnement</label>
-                        <textarea id="environnement" rows="3" placeholder="Décrire l'environnement..." style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical;"></textarea>
+                        <textarea id="environnement" rows="3" placeholder="Décrire l'environnement..."></textarea>
                         <label for="photos">Photos (max 3)</label>
-                        <input type="file" id="photos" accept="image/*" multiple style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;" />
-                        <div id="photosPreview" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;"></div>
-                        <button type="submit" style="padding: 10px 20px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px;">Envoyer la fiche</button>
-                        <button type="button" id="btnCancelForm" style="padding: 10px 20px; background-color: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">Annuler</button>
+                        <input type="file" id="photos" accept="image/*" multiple />
+                        <div id="photosPreview"></div>
+                        <button type="submit">Envoyer la fiche</button>
+                        <button type="button" id="btnCancelForm">Annuler</button>
                     </form>
                 </div>
 
                 <div id="stepSuccess" style="display:none; text-align:center;">
                     <h2>✅ Fiche envoyée avec succès !</h2>
-                    <button id="btnCloseSuccess" style="margin-top: 20px; padding: 10px 20px; background-color: #008CBA; color: white; border: none; border-radius: 5px; cursor: pointer;">Fermer</button>
+                    <button id="btnCloseSuccess">Fermer</button>
                 </div>
             </div>
         </div>
@@ -576,22 +609,12 @@ function createAndInjectModalHtml() {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     console.log("Modal HTML injected dynamically via JS.");
 
-    // **DÉBUT DU BLOC AJOUTÉ POUR ROBUSTESSE**
-    // Assurez-vous que toutes les étapes de la modale sont cachées après l'injection
-    // Ce setTimeout est là pour donner un petit délai au navigateur pour que les éléments soient bien en place.
-    setTimeout(() => {
-        const modalOverlay = document.getElementById("modalOverlay");
-        const stepQR = document.getElementById("stepQR");
-        const stepForm = document.getElementById("stepForm");
-        const stepSuccess = document.getElementById("stepSuccess");
+    // Le CSS dans viiveo-styles.css prendra le relais pour le positionnement et les couleurs.
+    // Les styles inline ici sont réduits au minimum nécessaire pour le display initial.
 
-        if (modalOverlay) modalOverlay.style.display = "none";
-        if (stepQR) stepQR.style.display = "none";
-        if (stepForm) stepForm.style.display = "none";
-        if (stepSuccess) stepSuccess.style.display = "none";
-        console.log("État initial des étapes de la modale défini sur 'none' après injection.");
-    }, 50); // Un très court délai suffit généralement
-    // **FIN DU BLOC AJOUTÉ POUR ROBUSTESSE**
+    // Pas besoin de ce setTimeout ici pour masquer les étapes,
+    // openModalStartPrestation s'en chargera quand elle sera appelée.
+    // Les styles CSS externes doivent définir `display: none;` pour les étapes par défaut.
 }
 
 // Point d'entrée principal du script
