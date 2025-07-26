@@ -7,6 +7,10 @@ let currentPrestatairePrenom = null, currentPrestataireNom = null;
 let currentLatitude = null, currentLongitude = null;
 let heureDebut = null;
 
+// Ajoutez cette variable globale pour l'instance du scanner.
+// Cela permet de la nettoyer correctement à la fermeture de la modale.
+let qrScannerInstance = null; // Déplacé hors de la fonction startQrScanner pour une gestion globale
+
 // Fonctions liées au scanner et à la modale
 function setTodayDate(obsDateInput) {
     if (obsDateInput) {
@@ -39,12 +43,18 @@ function openModalStartPrestation(missionId, clientPrenom, clientNom) {
     currentPrestataireNom = window.currentNom;
 
     // S'assurer que les étapes sont dans le bon ordre d'affichage
-    stepQR.style.display = "flex"; // Affiche le scanner QR
+    // IMPORTANT : On masque toutes les étapes d'abord pour éviter les flashs.
+    stepQR.style.display = "none"; // Sera mis à flex par startQrScanner après initialisation
     stepForm.style.display = "none";
     stepSuccess.style.display = "none";
     modalOverlay.style.display = "flex"; // Rend la modale visible
 
-    startQrScanner();
+    // Démarre le scanner APRES que la modale est rendue visible
+    // Un léger délai peut être bénéfique ici aussi pour s'assurer que le DOM est "peint"
+    // avant que html5-qrcode ne tente d'accéder à l'élément.
+    setTimeout(() => {
+        startQrScanner();
+    }, 50); // Un délai de 50ms pour la robustesse.
 }
 
 function closeModal() {
@@ -57,73 +67,86 @@ function closeModal() {
         clearForm(obsForm);
     }
     // Arrête le scanner si une instance est active
-    if (window.qrScannerInstance && window.qrScannerInstance.isScanning) {
-        window.qrScannerInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
-        window.qrScannerInstance = null; // Nettoyer la référence
+    if (qrScannerInstance && qrScannerInstance.isScanning) { // Utilisez la variable globale
+        qrScannerInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
+        qrScannerInstance = null; // Nettoyer la référence
     }
 }
 
 async function startQrScanner() {
     const qrReaderElement = document.getElementById("qr-reader");
     if (!qrReaderElement) {
-        console.error("Éléments 'qr-reader' non trouvé.");
+        console.error("Élément 'qr-reader' non trouvé. Le scanner ne peut pas démarrer.");
         alert("Erreur: Le scanner QR ne peut pas démarrer (élément manquant).");
         closeModal();
         return;
     }
-    qrReaderElement.innerHTML = ""; // Nettoie l'élément avant de redémarrer le scanner
+
+    // Assurez-vous que l'élément conteneur du scanner est visible avant de le démarrer.
+    // Il est dans stepQR, donc stepQR doit être visible.
+    const stepQR = document.getElementById("stepQR");
+    if (stepQR) {
+        stepQR.style.display = "flex"; // S'assure que stepQR est visible pour le scanner
+    }
+
+    // Nettoie l'élément avant de redémarrer le scanner.
+    // C'est très important pour éviter les problèmes si le scanner a été arrêté/redémarré.
+    qrReaderElement.innerHTML = ""; 
 
     // Crée une nouvelle instance du scanner et la stocke pour pouvoir l'arrêter
-    const qrReader = new Html5Qrcode("qr-reader");
-    window.qrScannerInstance = qrReader; // Stocke l'instance globalement
+    qrScannerInstance = new Html5Qrcode("qr-reader"); // Affectation à la variable globale
+    
+    console.log("Tentative de démarrage du scanner QR..."); // AJOUTÉ POUR LE DÉBOGAGE
 
-    qrReader.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        async (decodedText) => {
-            qrReader.stop(); // Arrête le scanner après un scan réussi
-            try {
-                console.log("🔍 Texte QR scanné :", decodedText);
+    try {
+        await qrScannerInstance.start( // Utilisez la variable globale ici
+            { facingMode: "environment" },
+            { fps: 10, qrbox: 250 }, // Gardons qrbox: 250, il était visible sur une de vos photos
+            async (decodedText) => {
+                qrScannerInstance.stop(); // Arrête le scanner après un scan réussi
+                try {
+                    console.log("🔍 Texte QR scanné :", decodedText);
 
-                const url = new URL(decodedText);
-                const idClient = url.searchParams.get("idclient") || url.searchParams.get("clientId");
-                if (!idClient) throw new Error("QR invalide : idclient manquant");
+                    const url = new URL(decodedText);
+                    const idClient = url.searchParams.get("idclient") || url.searchParams.get("clientId");
+                    if (!idClient) throw new Error("QR invalide : idclient manquant");
 
-                console.log("ID Client extrait:", idClient);
-                console.log("Email prestataire global (window.currentEmail):", window.currentEmail);
-                console.log("URL Apps Script globale (window.webAppUrl):", window.webAppUrl);
+                    console.log("ID Client extrait:", idClient);
+                    console.log("Email prestataire global (window.currentEmail):", window.currentEmail);
+                    console.log("URL Apps Script globale (window.webAppUrl):", window.webAppUrl);
 
-                const fullAppsScriptApiUrl = `${window.webAppUrl}?type=verifqr&idclient=${encodeURIComponent(idClient)}&email=${encodeURIComponent(window.currentEmail)}`;
-                console.log("URL COMPLETE ENVOYEE AU BACKEND:", fullAppsScriptApiUrl);
+                    const fullAppsScriptApiUrl = `${window.webAppUrl}?type=verifqr&idclient=${encodeURIComponent(idClient)}&email=${encodeURIComponent(window.currentEmail)}`;
+                    console.log("URL COMPLETE ENVOYEE AU BACKEND:", fullAppsScriptApiUrl);
 
-                const callbackName = 'cbVerifyClient' + Date.now();
-                const data = await callApiJsonp(fullAppsScriptApiUrl, callbackName);
+                    const callbackName = 'cbVerifyClient' + Date.now();
+                    const data = await callApiJsonp(fullAppsScriptApiUrl, callbackName);
 
-                if (!data.success) {
-                    alert("❌ " + data.message);
+                    if (!data.success) {
+                        alert("❌ " + data.message);
+                        closeModal();
+                        return;
+                    }
+
+                    heureDebut = new Date().toISOString();
+                    getGeolocationAndShowForm();
+
+                } catch (err) {
+                    alert("Erreur lors du scan QR : " + err.message);
+                    console.error("Erreur dans startQrScanner (callback de succès):", err); // Détail du log
                     closeModal();
-                    return;
                 }
-
-                heureDebut = new Date().toISOString();
-                getGeolocationAndShowForm();
-
-            } catch (err) {
-                alert("Erreur lors du scan QR : " + err.message);
-                console.error("Erreur dans startQrScanner:", err);
-                closeModal();
+            },
+            (errorMessage) => {
+                // Cette fonction est appelée en cas d'erreur ou d'échec de lecture continu
+                // Ne pas alerter l'utilisateur constamment, juste logguer
+                // console.warn("QR Scan progress error:", errorMessage); // Re-commenté comme il peut être trop verbeux
             }
-        },
-        (errorMessage) => {
-            // Cette fonction est appelée en cas d'erreur ou d'échec de lecture continu
-            // Ne pas alerter l'utilisateur constamment, juste logguer
-            // console.warn("QR Scan progress error:", errorMessage);
-        }
-    ).catch(err => {
+        );
+    } catch (err) {
         alert("Impossible d’activer la caméra. Assurez-vous d'avoir donné les permissions.");
-        console.error("Erreur d'initialisation de la caméra:", err);
+        console.error("Erreur d'initialisation de la caméra (détails):", err); // Log plus détaillé
         closeModal();
-    });
+    }
 }
 
 function getGeolocationAndShowForm() {
@@ -176,7 +199,7 @@ function showForm() {
     }
 
     stepQR.style.display = "none";
-    stepForm.style.display = "block";
+    stepForm.style.display = "flex"; // Changed from "block" to "flex" to match #modalContent layout
     clientNameInput.value = `${currentClientPrenom} ${currentClientNom}`;
     setTodayDate(obsDateInput);
 }
