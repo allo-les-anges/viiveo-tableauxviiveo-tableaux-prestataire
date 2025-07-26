@@ -81,6 +81,7 @@ async function login() {
             loginDiv.style.display = 'none';
             missionsDiv.style.display = 'block';
             console.log("LOGIN: Missions chargées après connexion réussie.");
+            await loadMissions(); // Appel direct de loadMissions après la connexion réussie
         } else {
             showMessage(data.message || 'Erreur de connexion.', 'error');
             loginDiv.style.display = 'block'; // Réaffiche le formulaire de login
@@ -97,14 +98,15 @@ async function login() {
 
 /**
  * Charge les missions pour le prestataire connecté.
- * @param {string} email L'email du prestataire.
  */
 async function loadMissions() {
     console.log("LOAD MISSIONS: Fonction loadMissions() appelée.");
     if (!window.currentEmail) {
-        console.log("LOAD MISSIONS: Pas d'email prestataire, ne charge pas les missions.");
+        console.log("LOAD MISSIONS: Pas d'email prestataire (window.currentEmail est null ou vide), ne charge pas les missions.");
         return;
     }
+    console.log(`LOAD MISSIONS: Chargement des missions pour ${window.currentEmail}`);
+
 
     const loaderDiv = document.querySelector('.viiveo-loader');
     loaderDiv.style.display = 'block';
@@ -120,11 +122,13 @@ async function loadMissions() {
         console.log("LOAD MISSIONS: Réponse de l'API des missions:", data);
 
         if (data.success && data.missions) {
+            console.log(`LOAD MISSIONS: ${data.missions.length} missions reçues.`);
             renderMissions(data.missions);
             console.log("LOAD MISSIONS: Tableaux de missions rendus avec succès.");
         } else {
             showMessage(data.message || 'Aucune mission trouvée.', 'info');
             renderMissions([]); // Affiche des tableaux vides
+            console.log("LOAD MISSIONS: Aucune mission ou erreur dans la réponse.");
         }
     } catch (error) {
         console.error("LOAD MISSIONS: Erreur lors de l'appel API des missions:", error);
@@ -139,19 +143,36 @@ async function loadMissions() {
  * @param {Array<Object>} missions La liste des missions.
  */
 function renderMissions(missions) {
+    console.log("RENDER MISSIONS: Début du rendu des missions.");
     const missionsAttenteDiv = document.getElementById('missions-attente');
     const missionsAVenirDiv = document.getElementById('missions-a-venir');
     const missionsTermineesDiv = document.getElementById('missions-terminees');
 
+    if (!missionsAttenteDiv || !missionsAVenirDiv || !missionsTermineesDiv) {
+        console.error("RENDER MISSIONS: Un ou plusieurs conteneurs de missions sont introuvables dans le DOM.");
+        showMessage("Erreur d'affichage: Conteneurs de missions manquants.", "error");
+        return;
+    }
+
     missionsAttenteDiv.innerHTML = '';
     missionsAVenirDiv.innerHTML = '';
     missionsTermineesDiv.innerHTML = '';
+    console.log("RENDER MISSIONS: Conteneurs de missions vidés.");
 
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Pour comparer uniquement la date
 
     missions.forEach(mission => {
-        const missionDate = new Date(mission.date); // Assurez-vous que mission.date est un format valide pour Date()
+        // Logique de parsing de date plus robuste si mission.date n'est pas toujours un objet Date
+        let missionDate;
+        if (mission.date instanceof Date) {
+            missionDate = mission.date;
+        } else if (typeof mission.date === 'string') {
+            missionDate = new Date(mission.date);
+        } else {
+            console.warn(`RENDER MISSIONS: Date de mission invalide pour ID ${mission.id}:`, mission.date);
+            missionDate = new Date(); // Fallback
+        }
         missionDate.setHours(0, 0, 0, 0);
 
         const missionElement = document.createElement('div');
@@ -164,9 +185,9 @@ function renderMissions(missions) {
             <p>Statut: <span class="font-bold ${mission.statut === 'confirmée' ? 'text-blue-600' : (mission.statut === 'en cours' ? 'text-orange-600' : 'text-green-600')}">${mission.statut}</span></p>
             <button class="scan-qr-button mt-3 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                     data-mission-id="${mission.id}"
-                    data-client-id="${mission.idClientQR}"
-                    data-client-prenom="${mission.prenomClient}"
-                    data-client-nom="${mission.nomClient}"
+                    data-client-id="${mission.idClientQR || ''}"
+                    data-client-prenom="${mission.prenomClient || ''}"
+                    data-client-nom="${mission.nomClient || ''}"
                     data-heure-debut-reelle="${mission.heureDebutReelle || ''}"
                     data-latitude-debut="${mission.latitudeDebut || ''}"
                     data-longitude-debut="${mission.longitudeDebut || ''}">
@@ -176,8 +197,8 @@ function renderMissions(missions) {
 
         const scanButton = missionElement.querySelector('.scan-qr-button');
         scanButton.addEventListener('click', () => {
+            console.log(`RENDER MISSIONS: Bouton Scanner QR cliqué pour mission ${mission.id}`);
             // Stocker les infos de la mission dans des variables globales temporaires avant le scan
-            // Ces infos seront utilisées par handleScanResult si la mission est 'readyForEnd'
             window.currentMissionId = scanButton.dataset.missionId;
             window.currentClientPrenom = scanButton.dataset.clientPrenom;
             window.currentClientNom = scanButton.dataset.clientNom;
@@ -185,18 +206,19 @@ function renderMissions(missions) {
             window.currentLatitudeDebut = scanButton.dataset.latitudeDebut;
             window.currentLongitudeDebut = scanButton.dataset.longitudeDebut;
 
-            // Démarrer le scanner, qui appellera handleScanResult avec les données du QR
-            startQrScanner();
+            startQrScanner(); // Démarrer le scanner
         });
 
         if (mission.statut === 'confirmée') {
             missionsAttenteDiv.appendChild(missionElement);
         } else if (mission.statut === 'en cours') {
-            missionsAVenirDiv.appendChild(missionElement); // Les missions "en cours" sont aussi "à venir" dans ce contexte
+            missionsAVenirDiv.appendChild(missionElement);
         } else if (mission.statut === 'terminée') {
             missionsTermineesDiv.appendChild(missionElement);
         }
+        console.log(`RENDER MISSIONS: Mission ${mission.id} ajoutée à la section ${mission.statut}.`);
     });
+    console.log("RENDER MISSIONS: Fin du rendu des missions.");
 }
 
 
@@ -207,12 +229,6 @@ function renderMissions(missions) {
  */
 function startQrScanner() {
     console.log("Tentative de démarrage du scanner QR...");
-    const qrCodeRegion = document.getElementById('qr-code-reader');
-    if (!qrCodeRegion) {
-        showMessage('Erreur: Élément pour le scanner QR introuvable.', 'error');
-        return;
-    }
-
     // Créer une modale pour le scanner
     const scannerModal = document.createElement('div');
     scannerModal.id = 'scannerModal';
@@ -238,7 +254,7 @@ function startQrScanner() {
         (qrCodeMessage) => {
             // Appelé quand un QR code est détecté
             handleScanResult(qrCodeMessage);
-            scannerModal.remove(); // Ferme la modale après le scan
+            // La modale sera fermée dans handleScanResult après l'arrêt du scanner
         },
         (errorMessage) => {
             // Appelé en cas d'erreur ou si aucun QR n'est détecté
@@ -254,10 +270,11 @@ function startQrScanner() {
 
     // Écouteur pour fermer la modale
     scannerModal.querySelector('#closeScannerModal').addEventListener('click', () => {
-        if (html5QrCodeScanner.is = Html5QrcodeSupported) { // Correction: isScanning n'est pas une propriété statique
+        if (html5QrCodeScanner && html5QrCodeScanner.isScanning) { // Correction: isScanning est la bonne propriété
              html5QrCodeScanner.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
         }
         scannerModal.remove();
+        console.log("Scanner QR arrêté et modale fermée manuellement.");
     });
 }
 
@@ -267,8 +284,15 @@ function startQrScanner() {
  */
 async function handleScanResult(qrData) {
     console.log("QR Code détecté:", qrData);
-    if (html5QrCodeScanner && html5QrCodeScanner.isScanning) { // Vérifie si le scanner est actif avant de l'arrêter
+    const scannerModal = document.getElementById('scannerModal'); // Récupère la modale du scanner
+
+    if (html5QrCodeScanner && html5QrCodeScanner.isScanning) {
         await html5QrCodeScanner.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
+        console.log("Scanner arrêté après détection réussie.");
+    }
+    if (scannerModal) {
+        scannerModal.remove(); // Ferme la modale du scanner
+        console.log("Modale du scanner fermée.");
     }
 
     // Extraire les paramètres de l'URL du QR code
@@ -320,9 +344,11 @@ async function handleScanResult(qrData) {
                         // Gérer les différents statuts de mission
                         if (data.missionStatus === 'started') {
                             // Mission vient d'être démarrée (premier scan)
-                            loadMissions(); // Recharger les missions pour mettre à jour l'affichage
+                            console.log("Mission démarrée, rechargement des missions...");
+                            await loadMissions(); // Recharger les missions pour mettre à jour l'affichage
                         } else if (data.missionStatus === 'readyForEnd') {
                             // Mission est en cours, prête pour la fin (deuxième scan)
+                            console.log("Mission en cours, ouverture de la modale d'observation...");
                             // Stocker les infos de la mission pour le formulaire d'observation
                             window.currentMissionId = data.mission.id;
                             window.currentClientPrenom = data.client.prenom;
@@ -335,7 +361,8 @@ async function handleScanResult(qrData) {
                         } else if (data.missionStatus === 'completed') {
                             // Mission déjà terminée
                             showMessage(data.message, 'info');
-                            loadMissions(); // Rafraîchir au cas où
+                            console.log("Mission déjà terminée, rechargement des missions...");
+                            await loadMissions(); // Rafraîchir au cas où
                         }
                     } else {
                         showMessage(data.message, 'error');
@@ -422,6 +449,7 @@ function openObservationModal() {
         window.currentHeureDebutReelle = null;
         window.currentLatitudeDebut = null;
         window.currentLongitudeDebut = null;
+        console.log("Modale d'observation fermée manuellement.");
     });
 
     observationForm.addEventListener('submit', submitObservationForm);
@@ -493,8 +521,8 @@ async function submitObservationForm(event) {
 
         if (data.success) {
             showMessage('Fiche d\'observation envoyée et mission clôturée !', 'success');
-            observationModal.remove(); // Ferme la modale
-            loadMissions(); // Recharge les missions pour voir le statut "terminée"
+            if (observationModal) observationModal.remove(); // Ferme la modale
+            await loadMissions(); // Recharge les missions pour voir le statut "terminée"
         } else {
             showMessage(data.message || 'Erreur lors de l\'envoi de la fiche.', 'error');
             if (observationModal) observationModal.style.display = 'flex'; // Réaffiche la modale en cas d'erreur
@@ -522,26 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         console.error("Formulaire de connexion (loginForm) introuvable.");
     }
-
-    // Vérifier si un prestataire est déjà connecté (par exemple, via un cookie ou localStorage si implémenté)
-    // Pour l'instant, on suppose qu'il faut toujours se connecter.
-    // Si vous avez une logique de session, c'est ici que vous la géreriez pour appeler loadMissions() directement.
 });
 
-// Initialiser les écouteurs de la modale d'observation après injection et délai
-// Cette fonction est appelée par openObservationModal()
-function initializeModalListeners() {
-    console.log("initializeModalListeners appelée après injection et délai.");
-    const closeButton = document.getElementById('closeObservationModal');
-    const observationForm = document.getElementById('observationForm');
-
-    if (closeButton) {
-        closeButton.addEventListener('click', () => {
-            document.getElementById('observationModal').remove();
-        });
-    }
-
-    if (observationForm) {
-        observationForm.addEventListener('submit', submitObservationForm);
-    }
-}
+// initializeModalListeners n'est plus nécessaire car les écouteurs sont ajoutés directement dans openObservationModal
+// au moment où la modale est créée.
