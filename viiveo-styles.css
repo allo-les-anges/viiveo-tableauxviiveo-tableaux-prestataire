@@ -312,6 +312,16 @@ input[type="email"], input[type="password"] {
     object-fit: contain !important; /* Assure que la vidéo est contenue sans être coupée */
 }
 
+/* Style pour le message de géolocalisation */
+#geolocationMessage {
+    color: #333;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 15px;
+    margin-bottom: 10px; /* Espace sous le message */
+    display: none; /* Masqué par défaut, affiché par JS */
+}
+
 /* Styles pour les labels et inputs/select/textarea à l'intérieur de la modale */
 #modalContent label {
     display: block;
