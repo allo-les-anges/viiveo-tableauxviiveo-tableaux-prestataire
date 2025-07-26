@@ -231,39 +231,21 @@ function showForm() {
     setTodayDate(obsDateInput);
 }
 
-function clearFormFields() {
-    const obsDateInput = document.getElementById("obsDate");
-    const etatSanteInput = document.getElementById("etatSante");
-    const etatFormeInput = document.getElementById("etatForme");
-    const environnementInput = document.getElementById("environnement");
-    const photosInput = document.getElementById("photos");
-    const photosPreview = document.getElementById("photosPreview");
-
-    if (obsDateInput) obsDateInput.value = "";
-    if (etatSanteInput) etatSanteInput.value = "";
-    if (etatFormeInput) etatFormeInput.value = "";
-    if (environnementInput) environnementInput.value = "";
+function clearForm(formElement) {
+    if (!formElement) return;
+    Array.from(formElement.elements).forEach(el => {
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+            el.value = '';
+        } else if (el.tagName === 'SELECT') {
+            el.selectedIndex = 0;
+        }
+    });
+    // Réinitialisation spécifique du champ de fichier et de la prévisualisation
+    const photosInput = formElement.querySelector("#photos");
     if (photosInput) photosInput.value = "";
+    const photosPreview = formElement.querySelector("#photosPreview");
     if (photosPreview) photosPreview.innerHTML = "";
 }
-
-// Correction: La fonction clearForm est déjà définie, cette fonction est redondante
-// et ses sélecteurs sont moins robustes que ceux de clearForm.
-// function clearForm(formElement) { // Cette fonction est déjà définie plus haut
-//     if (!formElement) return;
-//     Array.from(formElement.elements).forEach(el => {
-//         if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-//             el.value = '';
-//         } else if (el.tagName === 'SELECT') {
-//             el.selectedIndex = 0;
-//         }
-//     });
-//     // Réinitialisation spécifique du champ de fichier et de la prévisualisation
-//     const photosInput = formElement.querySelector("#photos");
-//     if (photosInput) photosInput.value = "";
-//     const photosPreview = formElement.querySelector("#photosPreview");
-//     if (photosPreview) photosPreview.innerHTML = "";
-// }
 
 
 function tempDisable(btn, ms = 1000) {
@@ -400,6 +382,9 @@ function initializeModalListeners() {
 
 function initializeLoginForm() {
     const loginForm = document.getElementById("loginForm");
+    console.log("DEBUG initializeLoginForm: loginForm element:", loginForm); // NOUVEAU LOG
+    console.log("DEBUG initializeLoginForm: typeof login:", typeof login); // NOUVEAU LOG
+
     if (loginForm && typeof login === 'function') {
         // Supprimez l'écouteur précédent pour éviter les doublons si la fonction est appelée plusieurs fois
         loginForm.removeEventListener("submit", login); // Supprime l'écouteur si déjà présent
