@@ -23,9 +23,10 @@ function openModalStartPrestation(missionId, clientPrenom, clientNom) {
     const stepQR = document.getElementById("stepQR");
     const stepForm = document.getElementById("stepForm");
     const stepSuccess = document.getElementById("stepSuccess");
+    const geolocationMessage = document.getElementById("geolocationMessage"); // NOUVEAU: Récupérer l'élément du message
 
-    if (!modalOverlay || !stepQR || !stepForm || !stepSuccess) {
-        console.error("Erreur: Éléments de la modale non trouvés lors de l'ouverture.");
+    if (!modalOverlay || !stepQR || !stepForm || !stepSuccess || !geolocationMessage) {
+        console.error("Erreur: Éléments de la modale ou du message de géolocalisation non trouvés lors de l'ouverture.");
         alert("Une erreur est survenue lors de l'ouverture de la modale. Veuillez recharger la page.");
         return;
     }
@@ -48,6 +49,7 @@ function openModalStartPrestation(missionId, clientPrenom, clientNom) {
     stepQR.style.display = "none";
     stepForm.style.display = "none";
     stepSuccess.style.display = "none";
+    geolocationMessage.style.display = "none"; // NOUVEAU: Masquer le message de géolocalisation au début
     modalOverlay.style.display = "flex"; // Rend la modale visible
 
     // Démarre le scanner APRES que la modale est rendue visible
@@ -67,6 +69,11 @@ function closeModal() {
     if (obsForm) {
         clearForm(obsForm); // Assurez-vous que cette fonction existe et vide bien les champs
     }
+    const geolocationMessage = document.getElementById("geolocationMessage"); // NOUVEAU: Récupérer l'élément du message
+    if (geolocationMessage) {
+        geolocationMessage.style.display = "none"; // NOUVEAU: Masquer le message de géolocalisation à la fermeture
+        geolocationMessage.textContent = ""; // NOUVEAU: Vider le texte
+    }
     // Arrête le scanner si une instance est active
     // Correction: Utilisez isScanning seulement si qrScannerInstance n'est pas null
     if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
@@ -79,7 +86,7 @@ async function startQrScanner() {
     const qrReaderElement = document.getElementById("qr-reader");
     if (!qrReaderElement) {
         console.error("Élément 'qr-reader' non trouvé. Le scanner ne peut pas démarrer.");
-        alert("Erreur: Le scanner QR ne peut pas démarrer (élément manquant).");
+        alert("Erreur: Le scanner QR ne peut pas démarrer (élément manquant)."); // Garder l'alerte ici car c'est une erreur critique d'initialisation du scanner
         closeModal();
         return;
     }
@@ -147,7 +154,7 @@ async function startQrScanner() {
                     const data = await callApiJsonp(fullAppsScriptApiUrl, callbackName);
 
                     if (!data.success) {
-                        alert("❌ " + data.message);
+                        alert("❌ " + data.message); // Garder l'alerte ici pour les erreurs de vérification du QR
                         closeModal();
                         return;
                     }
@@ -156,7 +163,7 @@ async function startQrScanner() {
                     getGeolocationAndShowForm();
 
                 } catch (err) {
-                    alert("Erreur lors du scan QR : " + (err.message || "Erreur inconnue")); // Utilise err.message ou une string générique
+                    alert("Erreur lors du scan QR : " + (err.message || "Erreur inconnue")); // Garder l'alerte ici pour les erreurs de scan
                     console.error("Erreur dans startQrScanner (callback de succès - détails complètes):", err); // Détail du log
                     closeModal();
                 }
@@ -177,36 +184,53 @@ async function startQrScanner() {
 }
 
 function getGeolocationAndShowForm() {
+    const geolocationMessage = document.getElementById("geolocationMessage"); // NOUVEAU: Récupérer l'élément du message
+
     if (!navigator.geolocation) {
-        alert("❌ Votre appareil ne supporte pas la géolocalisation.");
-        closeModal();
+        if (geolocationMessage) {
+            geolocationMessage.textContent = "❌ Votre appareil ne supporte pas la géolocalisation.";
+            geolocationMessage.style.display = "block";
+        }
+        console.error("Géolocalisation non supportée.");
+        // closeModal(); // Ne pas fermer la modale immédiatement, laisser le message visible
         return;
+    }
+
+    // NOUVEAU: Afficher un message d'attente
+    if (geolocationMessage) {
+        geolocationMessage.textContent = "Veuillez autoriser la géolocalisation...";
+        geolocationMessage.style.display = "block";
     }
 
     navigator.geolocation.getCurrentPosition(
         position => {
             currentLatitude = position.coords.latitude;
             currentLongitude = position.coords.longitude;
+            if (geolocationMessage) geolocationMessage.style.display = "none"; // NOUVEAU: Masquer le message en cas de succès
             showForm();
         },
         error => {
-            let message = "⚠️ Erreur de géolocalisation.";
+            let messageText = "⚠️ Erreur de géolocalisation.";
             switch (error.code) {
                 case error.PERMISSION_DENIED:
-                    message = "❌ Vous devez autoriser la géolocalisation pour continuer.";
+                    messageText = "❌ Vous devez autoriser la géolocalisation pour continuer.";
                     break;
                 case error.POSITION_UNAVAILABLE:
-                    message = "📍 Position non disponible.";
+                    messageText = "📍 Position non disponible.";
                     break;
                 case error.TIMEOUT:
-                    message = "⏱️ Le délai de localisation est dépassé.";
+                    messageText = "⏱️ Le délai de localisation est dépassé.";
                     break;
                 default:
-                    message = "❌ Erreur inconnue.";
+                    messageText = "❌ Erreur inconnue.";
             }
-            alert(message);
+            if (geolocationMessage) {
+                geolocationMessage.textContent = messageText;
+                geolocationMessage.style.display = "block";
+                geolocationMessage.style.color = "#d32f2f"; // Couleur d'erreur
+            }
             console.error("Erreur de géolocalisation:", error);
-            closeModal();
+            // closeModal(); // Ne pas fermer la modale, laisser le message d'erreur visible
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
@@ -248,7 +272,7 @@ function clearFormFields() {
 }
 
 // Rendre la fonction show globale
-window.show = function(el, visible) { // CHANGEMENT MAJEUR ICI : window.show
+window.show = function(el, visible) {
     if (!el) return;
     el.style.display = visible ? "block" : "none";
 };
@@ -412,6 +436,7 @@ function createAndInjectModalHtml() {
                 <div id="stepQR" style="display:none;">
                     <h2>📸 Scanner le QR code client</h2>
                     <div id="qr-reader"></div>
+                    <p id="geolocationMessage" style="color: #333; font-weight: bold; text-align: center; margin-top: 15px; display: none;"></p>
                     <button id="btnCancelQR">Annuler</button>
                 </div>
 
@@ -460,7 +485,7 @@ function createAndInjectModalHtml() {
 }
 
 // Rendre la fonction login globale pour qu'elle soit accessible par le formulaire
-window.login = async function() { // CHANGEMENT MAJEUR ICI : window.login
+window.login = async function() {
     console.log("LOGIN: Fonction login() appelée.");
     const email = document.getElementById("email")?.value.trim();
     const password = document.getElementById("password")?.value.trim();
@@ -475,7 +500,7 @@ window.login = async function() { // CHANGEMENT MAJEUR ICI : window.login
         return;
     }
     if (message) message.textContent = "";
-    window.show(loader, true); // Appel via window.show
+    window.show(loader, true);
     tempDisable(document.querySelector(".viiveo-login button"), 3000);
     console.log("LOGIN: Tentative de connexion avec email:", email);
 
@@ -498,18 +523,18 @@ window.login = async function() { // CHANGEMENT MAJEUR ICI : window.login
 
         window.setPrestataireData(data.email, data.prenom, data.nom);
 
-        window.show(form, false); // Appel via window.show
-        window.show(missionsBlock, true); // Appel via window.show
+        window.show(form, false);
+        window.show(missionsBlock, true);
         await loadMissions(window.currentEmail);
         console.log("LOGIN: Missions chargées après connexion réussie.");
     } catch (err) {
         if (message) message.textContent = "Erreur serveur ou réseau.";
         console.error("LOGIN ERROR: Erreur dans la fonction login():", err);
     } finally {
-        window.show(loader, false); // Appel via window.show
+        window.show(loader, false);
         console.log("LOGIN: Fonction login() terminée.");
     }
-}; // FIN DU CHANGEMENT MAJEUR ICI
+};
 
 window.loadMissions = async function(emailToLoad) {
     const contAttente = document.getElementById("missions-attente");
@@ -545,7 +570,7 @@ window.loadMissions = async function(emailToLoad) {
         const missions = data.missions;
         const missionsAttente = missions.filter(m => m.statut === "en attente");
         const missionsValidees = missions.filter(m => m.statut === "confirmée" || m.statut === "validée");
-        const missionsTerminees = missions.filter(m => m.statut === "terminée"); // Correction ici, c'était une fonction
+        const missionsTerminees = missions.filter(m => m.statut === "terminée");
 
         contAttente.innerHTML = renderTable(missionsAttente, 'attente');
         contAvenir.innerHTML = renderTable(missionsValidees, 'validee');
@@ -776,14 +801,13 @@ function initializeLoginForm() {
 
 // Cette fonction crée et injecte le HTML de la modale dynamiquement
 function createAndInjectModalHtml() {
-    // Correction: Retiré tous les styles inline sauf le display initial,
-    // pour que le CSS externe (viiveo-styles.css) prenne le relais.
     const modalHtml = `
         <div id="modalOverlay" style="display: none;">
             <div id="modalContent">
                 <div id="stepQR" style="display:none;">
                     <h2>📸 Scanner le QR code client</h2>
                     <div id="qr-reader"></div>
+                    <p id="geolocationMessage" style="color: #333; font-weight: bold; text-align: center; margin-top: 15px; display: none;"></p>
                     <button id="btnCancelQR">Annuler</button>
                 </div>
 
@@ -825,14 +849,10 @@ function createAndInjectModalHtml() {
     // Injecte le HTML à la fin du corps du document
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     console.log("Modal HTML injected dynamically via JS.");
-
-    // Correction: Ce setTimeout n'est plus nécessaire ici.
-    // Les styles par défaut sont gérés par le CSS externe,
-    // et openModalStartPrestation gère l'affichage initial.
 }
 
 // Rendre la fonction login globale pour qu'elle soit accessible par le formulaire
-window.login = async function() { // CHANGEMENT MAJEUR ICI : window.login
+window.login = async function() {
     console.log("LOGIN: Fonction login() appelée.");
     const email = document.getElementById("email")?.value.trim();
     const password = document.getElementById("password")?.value.trim();
@@ -847,7 +867,7 @@ window.login = async function() { // CHANGEMENT MAJEUR ICI : window.login
         return;
     }
     if (message) message.textContent = "";
-    window.show(loader, true); // Appel via window.show
+    window.show(loader, true);
     tempDisable(document.querySelector(".viiveo-login button"), 3000);
     console.log("LOGIN: Tentative de connexion avec email:", email);
 
@@ -870,18 +890,18 @@ window.login = async function() { // CHANGEMENT MAJEUR ICI : window.login
 
         window.setPrestataireData(data.email, data.prenom, data.nom);
 
-        window.show(form, false); // Appel via window.show
-        window.show(missionsBlock, true); // Appel via window.show
+        window.show(form, false);
+        window.show(missionsBlock, true);
         await loadMissions(window.currentEmail);
         console.log("LOGIN: Missions chargées après connexion réussie.");
     } catch (err) {
         if (message) message.textContent = "Erreur serveur ou réseau.";
         console.error("LOGIN ERROR: Erreur dans la fonction login():", err);
     } finally {
-        window.show(loader, false); // Appel via window.show
+        window.show(loader, false);
         console.log("LOGIN: Fonction login() terminée.");
     }
-}; // FIN DU CHANGEMENT MAJEUR ICI
+};
 
 window.loadMissions = async function(emailToLoad) {
     const contAttente = document.getElementById("missions-attente");
@@ -917,7 +937,7 @@ window.loadMissions = async function(emailToLoad) {
         const missions = data.missions;
         const missionsAttente = missions.filter(m => m.statut === "en attente");
         const missionsValidees = missions.filter(m => m.statut === "confirmée" || m.statut === "validée");
-        const missionsTerminees = missions.filter(m => m.statut === "terminée"); // Correction ici, c'était une fonction
+        const missionsTerminees = missions.filter(m => m.statut === "terminée");
 
         contAttente.innerHTML = renderTable(missionsAttente, 'attente');
         contAvenir.innerHTML = renderTable(missionsValidees, 'validee');
@@ -1010,197 +1030,6 @@ function createElementFromHTML(htmlString) {
     const div = document.createElement('div');
     div.innerHTML = htmlString.trim();
     return div.firstChild;
-}
-
-// Nouvelle fonction pour initialiser les écouteurs de la modale d'observation
-function initializeModalListeners() {
-    const modalOverlay = document.getElementById("modalOverlay");
-    const stepQR = document.getElementById("stepQR");
-    const stepForm = document.getElementById("stepForm");
-    const stepSuccess = document.getElementById("stepSuccess");
-    const obsForm = document.getElementById("obsForm");
-    const photosInput = document.getElementById("photos");
-    const photosPreview = document.getElementById("photosPreview");
-    const clientNameInput = document.getElementById("clientName");
-    const obsDateInput = document.getElementById("obsDate");
-    const etatSanteInput = document.getElementById("etatSante");
-    const etatFormeInput = document.getElementById("etatForme");
-    const environnementInput = document.getElementById("environnement");
-
-    // Vérifier si tous les éléments essentiels de la modale sont présents
-    if (modalOverlay && stepQR && stepForm && stepSuccess && obsForm && photosInput && photosPreview && clientNameInput && obsDateInput && etatSanteInput && etatFormeInput && environnementInput) {
-        // Attachez le change listener pour les photos
-        photosInput.addEventListener("change", e => {
-            photosPreview.innerHTML = "";
-            const files = e.target.files;
-            if (files.length > 3) {
-                alert("Vous ne pouvez sélectionner que 3 photos max.");
-                photosInput.value = "";
-                return;
-            }
-            // Utilisation de Promise.all pour s'assurer que toutes les images sont chargées avant de les afficher
-            const fileReaders = Array.from(files).map(file => {
-                return new Promise(resolve => {
-                    const reader = new FileReader();
-                    reader.onload = ev => {
-                        const img = document.createElement("img");
-                        img.src = ev.target.result;
-                        photosPreview.appendChild(img);
-                        resolve();
-                    };
-                    reader.readAsDataURL(file);
-                });
-            });
-            Promise.all(fileReaders).then(() => {
-                console.log("Toutes les photos ont été prévisualisées.");
-            });
-        });
-
-        // Attachez le submit listener pour le formulaire d'observation
-        obsForm.addEventListener("submit", async e => {
-            e.preventDefault();
-
-            if (photosInput.files.length > 3) {
-                alert("Maximum 3 photos autorisées.");
-                return;
-            }
-
-            if (!window.currentEmail) {
-                alert("Erreur: Données du prestataire manquantes pour l'envoi.");
-                console.error("Tentative d'envoi de formulaire sans email prestataire.");
-                return;
-            }
-
-            const heureFin = new Date().toISOString();
-            const formData = new FormData();
-            formData.append("type", "envoyerFiche");
-            formData.append("missionId", currentMissionId);
-            formData.append("prenomClient", currentClientPrenom);
-            formData.append("nomClient", currentClientNom);
-            formData.append("obsDate", obsDateInput.value);
-            formData.append("etatSante", etatSanteInput.value);
-            formData.append("etatForme", etatFormeInput.value);
-            formData.append("environnement", environnementInput.value);
-            formData.append("latitude", currentLatitude);
-            formData.append("longitude", currentLongitude);
-            formData.append("heureDebut", heureDebut);
-            formData.append("heureFin", heureFin);
-            formData.append("prestatairePrenom", window.currentPrenom);
-            formData.append("prestataireNom", window.currentNom);
-            formData.append("prestataireEmail", window.currentEmail);
-
-            for (let file of photosInput.files) {
-                formData.append("photos", file);
-            }
-
-            try {
-                const res = await fetch(window.webAppUrl, {
-                    method: "POST",
-                    body: formData,
-                });
-                const json = await res.json();
-                if (json.success) {
-                    stepForm.style.display = "none";
-                    stepSuccess.style.display = "flex"; // Changed to flex for consistency with modalContent
-                    if (typeof window.loadMissions === 'function' && window.currentEmail) {
-                        window.loadMissions(window.currentEmail);
-                    }
-                } else {
-                    alert("Erreur : " + (json.message || "Envoi échoué"));
-                }
-            } catch (err) {
-                alert("Erreur réseau ou du serveur lors de l'envoi de la fiche.");
-                console.error("Erreur lors de l'envoi de la fiche:", err);
-            }
-        });
-
-        // Attachez les écouteurs pour les boutons de la modale ici
-        // Utilisation de querySelector pour être plus robuste si l'ID n'est pas unique
-        if (document.querySelector("#btnCancelQR")) document.querySelector("#btnCancelQR").onclick = closeModal;
-        if (document.querySelector("#btnCancelForm")) document.querySelector("#btnCancelForm").onclick = closeModal;
-        if (document.querySelector("#btnCloseSuccess")) document.querySelector("#btnCloseSuccess").onclick = closeModal;
-
-        console.log("Écouteurs de la modale d'observation initialisés.");
-
-    } else {
-        console.warn("Certains éléments de la modale d'observation sont manquants. Nouvelle tentative d'initialisation des écouteurs de modale...");
-        // Si les éléments ne sont pas là, relancez l'initialisation après un court délai
-        // C'est utile si le HTML est injecté après le premier DOMContentLoaded.
-        setTimeout(initializeModalListeners, 100);
-    }
-}
-
-function initializeLoginForm() {
-    const loginForm = document.getElementById("loginForm");
-    console.log("DEBUG initializeLoginForm: loginForm element:", loginForm);
-    console.log("DEBUG initializeLoginForm: typeof window.login:", typeof window.login);
-
-    if (loginForm && typeof window.login === 'function') {
-        // Supprimez l'écouteur précédent pour éviter les doublons si la fonction est appelée plusieurs fois
-        loginForm.removeEventListener("submit", window.login);
-        loginForm.addEventListener("submit", window.login);
-        console.log("Écouteur de soumission ajouté au formulaire de connexion.");
-    } else {
-        console.warn("Formulaire de connexion ou fonction 'login' non disponible. Nouvelle tentative...");
-        setTimeout(initializeLoginForm, 200); // Réessaie si le formulaire n'est pas encore là
-    }
-}
-
-// Cette fonction crée et injecte le HTML de la modale dynamiquement
-function createAndInjectModalHtml() {
-    // Correction: Retiré tous les styles inline sauf le display initial,
-    // pour que le CSS externe (viiveo-styles.css) prenne le relais.
-    const modalHtml = `
-        <div id="modalOverlay" style="display: none;">
-            <div id="modalContent">
-                <div id="stepQR" style="display:none;">
-                    <h2>📸 Scanner le QR code client</h2>
-                    <div id="qr-reader"></div>
-                    <button id="btnCancelQR">Annuler</button>
-                </div>
-
-                <div id="stepForm" style="display:none;">
-                    <h2>📝 Fiche d'observation</h2>
-                    <form id="obsForm">
-                        <label for="clientName">Nom du client</label>
-                        <input type="text" id="clientName" readonly />
-                        <label for="obsDate">Date de l'observation</label>
-                        <input type="date" id="obsDate" required />
-                        <label for="etatSante">État de santé</label>
-                        <textarea id="etatSante" rows="3" placeholder="Décrire l'état de santé..."></textarea>
-                        <label for="etatForme">État de forme</label>
-                        <select id="etatForme" required>
-                            <option value="">-- Choisir --</option>
-                            <option>Très bon</option>
-                            <option>Bon</option>
-                            <option>Moyen</option>
-                            <option>Faible</option>
-                            <option>Très faible</option>
-                        </select>
-                        <label for="environnement">Environnement</label>
-                        <textarea id="environnement" rows="3" placeholder="Décrire l'environnement..."></textarea>
-                        <label for="photos">Photos (max 3)</label>
-                        <input type="file" id="photos" accept="image/*" multiple />
-                        <div id="photosPreview"></div>
-                        <button type="submit">Envoyer la fiche</button>
-                        <button type="button" id="btnCancelForm">Annuler</button>
-                    </form>
-                </div>
-
-                <div id="stepSuccess" style="display:none;">
-                    <h2>✅ Fiche envoyée avec succès !</h2>
-                    <button id="btnCloseSuccess">Fermer</button>
-                </div>
-            </div>
-        </div>
-    `;
-    // Injecte le HTML à la fin du corps du document
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    console.log("Modal HTML injected dynamically via JS.");
-
-    // Correction: Ce setTimeout n'est plus nécessaire ici.
-    // Les styles par défaut sont gérés par le CSS externe,
-    // et openModalStartPrestation gère l'affichage initial.
 }
 
 // Point d'entrée principal du script
