@@ -258,9 +258,10 @@ input[type="email"], input[type="password"] {
     display: none; /* Géré par JS */
     justify-content: center;
     align-items: center;
-    z-index: 2147483647 !important; /* Z-index maximal pour être sûr d'être au-dessus */
-    /* Retiré le padding et overflow-y car ils sont mieux sur modalContent */
+    z-index: 2147483647 !important; /* Z-index maximal pour être sûr d'être au-dessus de tout */
     border: 5px solid red !important; /* Bordure de débogage pour voir la modale */
+    visibility: visible !important; /* Force la visibilité */
+    opacity: 1 !important; /* Force l'opacité */
 }
 #modalContent {
     background: white;
@@ -275,6 +276,7 @@ input[type="email"], input[type="password"] {
     display: flex;
     flex-direction: column;
     border: 5px solid green !important; /* Bordure de débogage pour voir le contenu */
+    background-color: blue !important; /* Fond bleu vif pour le contenu de la modale */
 }
 
 #stepQR {
@@ -283,6 +285,7 @@ input[type="email"], input[type="password"] {
     align-items: center; /* Ajouté pour correspondre au style inline précédent */
     border: 2px solid orange !important; /* Bordure de débogage pour voir l'étape QR */
     padding: 10px; /* Ajouté pour espacement interne */
+    background-color: orange !important; /* Fond orange vif pour l'étape QR */
 }
 
 #stepForm {
@@ -306,7 +309,8 @@ input[type="email"], input[type="password"] {
     max-height: 350px;
     margin: 0 auto;
     border: 2px solid yellow !important; /* Bordure de débogage pour voir le conteneur du scanner */
-    background-color: #f0f0f0; /* Couleur de fond pour le conteneur du scanner */
+    background-color: purple !important; /* Fond violet pour le lecteur QR */
+    min-height: 250px !important; /* S'assurer que le lecteur a une hauteur */
 }
 
 #qr-reader video, #qr-reader canvas {
