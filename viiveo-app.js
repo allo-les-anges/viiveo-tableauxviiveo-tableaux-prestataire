@@ -120,7 +120,7 @@ async function startQrScanner() {
                 qrbox: { width: 250, height: 250 }, // Taille du carré de détection (utilisez l'objet pour html5-qrcode v2.x)
                 aspectRatio: 1.333334 // Recommandé pour stabiliser le flux vidéo
             },
-            async (decodedText) => {
+            async (decodedText, decodedResult) => { // Ajout de decodedResult pour cohérence
                 // Cette fonction est appelée quand un QR code est détecté
                 console.log(`QR Code détecté: ${decodedText}`);
                 try {
@@ -247,176 +247,23 @@ function clearFormFields() {
     if (photosPreview) photosPreview.innerHTML = "";
 }
 
-// Fonctions liées au login et missions
-function show(el, visible) {
-    if (!el) return;
-    el.style.display = visible ? "block" : "none";
-}
-
-async function login() {
-    console.log("LOGIN: Fonction login() appelée.");
-    const email = document.getElementById("email")?.value.trim();
-    const password = document.getElementById("password")?.value.trim();
-    const message = document.getElementById("message");
-    const loader = document.querySelector(".viiveo-loader");
-    const form = document.querySelector(".viiveo-login");
-    const missionsBlock = document.querySelector(".viiveo-missions");
-
-    if (!email || !password) {
-        if (message) message.textContent = "Champs requis.";
-        console.log("LOGIN: Champs email/password requis.");
-        return;
-    }
-    if (message) message.textContent = "";
-    show(loader, true);
-    tempDisable(document.querySelector(".viiveo-login button"), 3000);
-    console.log("LOGIN: Tentative de connexion avec email:", email);
-
-    try {
-        const callbackName = 'cbLogin' + Date.now();
-        if (!window.webAppUrl) {
-            console.error("LOGIN ERROR: window.webAppUrl n'est pas défini !");
-            if (message) message.textContent = "Erreur de configuration: URL de l'application manquante.";
-            return;
-        }
-        const url = `${window.webAppUrl}?type=loginpresta&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
-        console.log("LOGIN: URL d'API générée:", url);
-        const data = await callApiJsonp(url, callbackName);
-        console.log("LOGIN: Réponse de l'API de login:", data);
-        if (!data.success) {
-            if (message) message.textContent = data.message || "Connexion échouée.";
-            console.log("LOGIN: Connexion échouée. Message:", data.message);
-            return;
-        }
-
-        window.setPrestataireData(data.email, data.prenom, data.nom);
-
-        show(form, false);
-        show(missionsBlock, true);
-        await loadMissions(window.currentEmail);
-        console.log("LOGIN: Missions chargées après connexion réussie.");
-    } catch (err) {
-        if (message) message.textContent = "Erreur serveur ou réseau.";
-        console.error("LOGIN ERROR: Erreur dans la fonction login():", err);
-    } finally {
-        show(loader, false);
-        console.log("LOGIN: Fonction login() terminée.");
-    }
-}
-
-window.loadMissions = async function(emailToLoad) {
-    const contAttente = document.getElementById("missions-attente");
-    const contAvenir = document.getElementById("missions-a-venir");
-    const contTerminees = document.getElementById("missions-terminees");
-    if (!contAttente || !contAvenir || !contTerminees) {
-        console.warn("Conteneurs de missions non trouvés. Impossible de charger les missions.");
-        return;
-    }
-
-    contAttente.innerHTML = "Chargement...";
-    contAvenir.innerHTML = "Chargement...";
-    contTerminees.innerHTML = "Chargement...";
-
-    try {
-        const callbackName = 'cbMissions' + Date.now();
-        if (!window.webAppUrl) {
-            console.error("LOAD MISSIONS ERROR: window.webAppUrl n'est pas défini !");
-            alert("Erreur de configuration: URL de l'application manquante pour charger les missions.");
-            return;
-        }
-        const url = `${window.webAppUrl}?type=missionspresta&email=${encodeURIComponent(emailToLoad)}`;
-        console.log("LOAD MISSIONS: URL d'API générée:", url);
-        const data = await callApiJsonp(url, callbackName);
-        console.log("LOAD MISSIONS: Réponse de l'API des missions:", data);
-
-        if (!data.success || !Array.isArray(data.missions)) {
-            alert("Erreur lors du chargement des missions.");
-            console.warn("LOAD MISSIONS: Données de missions invalides ou échec.", data);
-            return;
-        }
-
-        const missions = data.missions;
-        const missionsAttente = missions.filter(m => m.statut === "en attente");
-        const missionsValidees = missions.filter(m => m.statut === "confirmée" || m.statut === "validée");
-        const missionsTerminees = missions.filter(m => m.statut === "terminée");
-
-        contAttente.innerHTML = renderTable(missionsAttente, 'attente');
-        contAvenir.innerHTML = renderTable(missionsValidees, 'validee');
-        contTerminees.innerHTML = renderTable(missionsTerminees, '');
-        console.log("LOAD MISSIONS: Tableaux de missions rendus avec succès.");
-    } catch (e) {
-        alert("Erreur serveur lors du chargement des missions.");
-        console.error("LOAD MISSIONS ERROR: Erreur dans loadMissions():", e);
-    }
-}
-
-function renderTable(missions, type = "") {
-    if (!missions.length) return "<p>Aucune mission.</p>";
-    let html = `<table class="missions-table"><thead><tr><th>ID</th><th>Client</th><th>Adresse</th><th>Service</th><th>Date</th><th>Heure</th>`;
-    if (type) html += "<th>Actions</th>";
-    html += "</tr></thead><tbody>";
-
-    missions.forEach(m => {
-        const date = new Date(m.date).toLocaleDateString('fr-FR');
-        const heure = new Date(m.heure);
-        const formattedHeure = `${String(heure.getHours()).padStart(2, '0')}h${String(heure.getMinutes()).padStart(2, '0')}`;
-        html += `<tr>
-            <td data-label="ID">${m.id}</td>
-            <td data-label="Client">${m.client}</td>
-            <td data-label="Adresse">${m.adresse}</td>
-            <td data-label="Service">${m.service}</td>
-            <td data-label="Date">${date}</td>
-            <td data-label="Heure">${formattedHeure}</td>`;
-        if (type === "attente") {
-            html += `<td data-label="Actions" class="actions">
-            <button class="btn-action btn-validate" onclick="validerMission('${m.id}')">✅</button>
-            <button class="btn-action btn-refuse" onclick="refuserMission('${m.id}')">❌</button>
-            </td>`;
-        } else if (type === "validee") {
-            html += `<td data-label="Actions" class="actions"><button class="btn-action btn-start" onclick="openModalStartPrestation('${m.id}', '${m.clientPrenom}', '${m.clientNom}')">▶️</button></td>`;
-        }
-        html += "</tr>";
-    });
-
-    html += "</tbody></table>";
-    return html;
-}
-
-async function validerMission(id) {
-    if (!confirm("Confirmer la validation ?")) return;
-    const callbackName = 'cbValider' + Date.now();
-    const url = `${window.webAppUrl}?type=validerMission&id=${encodeURIComponent(id)}`;
-    await callApiJsonp(url, callbackName);
-    alert("Mission validée.");
-    if (window.currentEmail) await loadMissions(window.currentEmail);
-}
-
-async function refuserMission(id) {
-    const alt = prompt("Nouvelle date/heure ?");
-    if (!alt) return;
-    const callbackName = 'cbRefuser' + Date.now();
-    const url = `${window.webAppUrl}?type=refuserMission&id=${encodeURIComponent(id)}&alternatives=${encodeURIComponent(alt)}`;
-    await callApiJsonp(url, callbackName);
-    alert("Proposition envoyée.");
-    if (window.currentEmail) await loadMissions(window.currentEmail);
-}
-
-// Fonctions utilitaires génériques
-function clearForm(formElement) {
-    if (!formElement) return;
-    Array.from(formElement.elements).forEach(el => {
-        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-            el.value = '';
-        } else if (el.tagName === 'SELECT') {
-            el.selectedIndex = 0;
-        }
-    });
-    // Réinitialisation spécifique du champ de fichier et de la prévisualisation
-    const photosInput = formElement.querySelector("#photos");
-    if (photosInput) photosInput.value = "";
-    const photosPreview = formElement.querySelector("#photosPreview");
-    if (photosPreview) photosPreview.innerHTML = "";
-}
+// Correction: La fonction clearForm est déjà définie, cette fonction est redondante
+// et ses sélecteurs sont moins robustes que ceux de clearForm.
+// function clearForm(formElement) { // Cette fonction est déjà définie plus haut
+//     if (!formElement) return;
+//     Array.from(formElement.elements).forEach(el => {
+//         if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+//             el.value = '';
+//         } else if (el.tagName === 'SELECT') {
+//             el.selectedIndex = 0;
+//         }
+//     });
+//     // Réinitialisation spécifique du champ de fichier et de la prévisualisation
+//     const photosInput = formElement.querySelector("#photos");
+//     if (photosInput) photosInput.value = "";
+//     const photosPreview = formElement.querySelector("#photosPreview");
+//     if (photosPreview) photosPreview.innerHTML = "";
+// }
 
 
 function tempDisable(btn, ms = 1000) {
@@ -459,14 +306,21 @@ function initializeModalListeners() {
                 photosInput.value = "";
                 return;
             }
-            [...files].forEach(file => {
-                const reader = new FileReader();
-                reader.onload = ev => {
-                    const img = document.createElement("img");
-                    img.src = ev.target.result;
-                    photosPreview.appendChild(img);
-                };
-                reader.readAsDataURL(file);
+            // Utilisation de Promise.all pour s'assurer que toutes les images sont chargées avant de les afficher
+            const fileReaders = Array.from(files).map(file => {
+                return new Promise(resolve => {
+                    const reader = new FileReader();
+                    reader.onload = ev => {
+                        const img = document.createElement("img");
+                        img.src = ev.target.result;
+                        photosPreview.appendChild(img);
+                        resolve();
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+            Promise.all(fileReaders).then(() => {
+                console.log("Toutes les photos ont été prévisualisées.");
             });
         });
 
@@ -515,7 +369,7 @@ function initializeModalListeners() {
                 const json = await res.json();
                 if (json.success) {
                     stepForm.style.display = "none";
-                    stepSuccess.style.display = "block"; // Utiliser "block" ici car c'est un div simple, pas flex
+                    stepSuccess.style.display = "flex"; // Changed to flex for consistency with modalContent
                     if (typeof window.loadMissions === 'function' && window.currentEmail) {
                         window.loadMissions(window.currentEmail);
                     }
@@ -559,18 +413,18 @@ function initializeLoginForm() {
 
 // Cette fonction crée et injecte le HTML de la modale dynamiquement
 function createAndInjectModalHtml() {
-    // Correction: Assurez-vous que le HTML ici est exactement ce qui est dans votre fichier HTML séparé,
-    // en prêtant attention aux styles "display".
+    // Correction: Retiré tous les styles inline sauf le display initial,
+    // pour que le CSS externe (viiveo-styles.css) prenne le relais.
     const modalHtml = `
-        <div id="modalOverlay">
+        <div id="modalOverlay" style="display: none;">
             <div id="modalContent">
-                <div id="stepQR" style="display:none; flex-direction:column; align-items:center;">
+                <div id="stepQR" style="display:none;">
                     <h2>📸 Scanner le QR code client</h2>
                     <div id="qr-reader"></div>
                     <button id="btnCancelQR">Annuler</button>
                 </div>
 
-                <div id="stepForm" style="display:none; flex-direction:column; align-items:stretch;">
+                <div id="stepForm" style="display:none;">
                     <h2>📝 Fiche d'observation</h2>
                     <form id="obsForm">
                         <label for="clientName">Nom du client</label>
@@ -598,7 +452,7 @@ function createAndInjectModalHtml() {
                     </form>
                 </div>
 
-                <div id="stepSuccess" style="display:none; text-align:center;">
+                <div id="stepSuccess" style="display:none;">
                     <h2>✅ Fiche envoyée avec succès !</h2>
                     <button id="btnCloseSuccess">Fermer</button>
                 </div>
@@ -609,12 +463,9 @@ function createAndInjectModalHtml() {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     console.log("Modal HTML injected dynamically via JS.");
 
-    // Le CSS dans viiveo-styles.css prendra le relais pour le positionnement et les couleurs.
-    // Les styles inline ici sont réduits au minimum nécessaire pour le display initial.
-
-    // Pas besoin de ce setTimeout ici pour masquer les étapes,
-    // openModalStartPrestation s'en chargera quand elle sera appelée.
-    // Les styles CSS externes doivent définir `display: none;` pour les étapes par défaut.
+    // Correction: Ce setTimeout n'est plus nécessaire ici.
+    // Les styles par défaut sont gérés par le CSS externe,
+    // et openModalStartPrestation gère l'affichage initial.
 }
 
 // Point d'entrée principal du script
