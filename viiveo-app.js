@@ -247,23 +247,11 @@ function clearFormFields() {
     if (photosPreview) photosPreview.innerHTML = "";
 }
 
-// Correction: La fonction clearForm est déjà définie, cette fonction est redondante
-// et ses sélecteurs sont moins robustes que ceux de clearForm.
-// function clearForm(formElement) { // Cette fonction est déjà définie plus haut
-//     if (!formElement) return;
-//     Array.from(formElement.elements).forEach(el => {
-//         if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-//             el.value = '';
-//         } else if (el.tagName === 'SELECT') {
-//             el.selectedIndex = 0;
-//         }
-//     });
-//     // Réinitialisation spécifique du champ de fichier et de la prévisualisation
-//     const photosInput = formElement.querySelector("#photos");
-//     if (photosInput) photosInput.value = "";
-//     const photosPreview = formElement.querySelector("#photosPreview");
-//     if (photosPreview) photosPreview.innerHTML = "";
-// }
+// Rendre la fonction show globale
+window.show = function(el, visible) { // CHANGEMENT MAJEUR ICI : window.show
+    if (!el) return;
+    el.style.display = visible ? "block" : "none";
+};
 
 
 function tempDisable(btn, ms = 1000) {
@@ -414,7 +402,7 @@ window.login = async function() { // CHANGEMENT MAJEUR ICI : window.login
         return;
     }
     if (message) message.textContent = "";
-    show(loader, true);
+    window.show(loader, true); // CHANGEMENT ICI : window.show
     tempDisable(document.querySelector(".viiveo-login button"), 3000);
     console.log("LOGIN: Tentative de connexion avec email:", email);
 
@@ -437,15 +425,15 @@ window.login = async function() { // CHANGEMENT MAJEUR ICI : window.login
 
         window.setPrestataireData(data.email, data.prenom, data.nom);
 
-        show(form, false);
-        show(missionsBlock, true);
+        window.show(form, false); // CHANGEMENT ICI : window.show
+        window.show(missionsBlock, true); // CHANGEMENT ICI : window.show
         await loadMissions(window.currentEmail);
         console.log("LOGIN: Missions chargées après connexion réussie.");
     } catch (err) {
         if (message) message.textContent = "Erreur serveur ou réseau.";
         console.error("LOGIN ERROR: Erreur dans la fonction login():", err);
     } finally {
-        show(loader, false);
+        window.show(loader, false); // CHANGEMENT ICI : window.show
         console.log("LOGIN: Fonction login() terminée.");
     }
 }; // FIN DU CHANGEMENT MAJEUR ICI
@@ -484,7 +472,7 @@ window.loadMissions = async function(emailToLoad) {
         const missions = data.missions;
         const missionsAttente = missions.filter(m => m.statut === "en attente");
         const missionsValidees = missions.filter(m => m.statut === "confirmée" || m.statut === "validée");
-        const missionsTerminees = missions.filter(m => m.statut === "terminée");
+        const missionsTerminees = m => m.statut === "terminée";
 
         contAttente.innerHTML = renderTable(missionsAttente, 'attente');
         contAvenir.innerHTML = renderTable(missionsValidees, 'validee');
@@ -699,13 +687,13 @@ function initializeModalListeners() {
 
 function initializeLoginForm() {
     const loginForm = document.getElementById("loginForm");
-    console.log("DEBUG initializeLoginForm: loginForm element:", loginForm); // NOUVEAU LOG
-    console.log("DEBUG initializeLoginForm: typeof window.login:", typeof window.login); // CHANGEMENT DE LOG
+    console.log("DEBUG initializeLoginForm: loginForm element:", loginForm);
+    console.log("DEBUG initializeLoginForm: typeof window.login:", typeof window.login);
 
-    if (loginForm && typeof window.login === 'function') { // CHANGEMENT ICI : typeof window.login
+    if (loginForm && typeof window.login === 'function') {
         // Supprimez l'écouteur précédent pour éviter les doublons si la fonction est appelée plusieurs fois
-        loginForm.removeEventListener("submit", window.login); // CHANGEMENT ICI : window.login
-        loginForm.addEventListener("submit", window.login); // CHANGEMENT ICI : window.login
+        loginForm.removeEventListener("submit", window.login);
+        loginForm.addEventListener("submit", window.login);
         console.log("Écouteur de soumission ajouté au formulaire de connexion.");
     } else {
         console.warn("Formulaire de connexion ou fonction 'login' non disponible. Nouvelle tentative...");
