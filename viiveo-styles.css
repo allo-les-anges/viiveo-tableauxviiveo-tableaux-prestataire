@@ -258,10 +258,9 @@ input[type="email"], input[type="password"] {
     display: none; /* Géré par JS */
     justify-content: center;
     align-items: center;
-    z-index: 2147483647 !important; /* Z-index maximal pour être sûr d'être au-dessus de tout */
-    border: 5px solid red !important; /* Bordure de débogage pour voir la modale */
-    visibility: visible !important; /* Force la visibilité */
-    opacity: 1 !important; /* Force l'opacité */
+    z-index: 9999; /* Valeur élevée mais pas maximale, pour éviter les conflits extrêmes */
+    padding: 10px; /* Pour un peu d'espace sur les bords */
+    overflow-y: auto; /* Permet le défilement si nécessaire */
 }
 #modalContent {
     background: white;
@@ -275,48 +274,42 @@ input[type="email"], input[type="password"] {
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     display: flex;
     flex-direction: column;
-    border: 5px solid green !important; /* Bordure de débogage pour voir le contenu */
-    background-color: blue !important; /* Fond bleu vif pour le contenu de la modale */
 }
 
 #stepQR {
     display: none; /* Géré par JS */
-    flex-direction: column; /* Ajouté pour correspondre au style inline précédent */
-    align-items: center; /* Ajouté pour correspondre au style inline précédent */
-    border: 2px solid orange !important; /* Bordure de débogage pour voir l'étape QR */
-    padding: 10px; /* Ajouté pour espacement interne */
-    background-color: orange !important; /* Fond orange vif pour l'étape QR */
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
 }
 
 #stepForm {
     display: none; /* Géré par JS */
-    flex-direction: column; /* Ajouté pour correspondre au style inline précédent */
-    align-items: stretch; /* Ajouté pour correspondre au style inline précédent */
-    border: 2px solid purple !important; /* Bordure de débogage pour voir l'étape Form */
-    padding: 10px; /* Ajouté pour espacement interne */
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px;
 }
 
 #stepSuccess {
     display: none; /* Géré par JS */
-    text-align: center; /* Ajouté pour correspondre au style inline précédent */
-    border: 2px solid blue !important; /* Bordure de débogage pour voir l'étape Success */
-    padding: 10px; /* Ajouté pour espacement interne */
+    text-align: center;
+    padding: 10px;
 }
 
 #qr-reader {
     width: 100% !important;
     height: auto !important;
-    max-height: 350px;
-    margin: 0 auto;
-    border: 2px solid yellow !important; /* Bordure de débogage pour voir le conteneur du scanner */
-    background-color: purple !important; /* Fond violet pour le lecteur QR */
-    min-height: 250px !important; /* S'assurer que le lecteur a une hauteur */
+    max-height: 280px; /* Légèrement réduit pour laisser de la place au bouton */
+    margin: 0 auto 20px auto; /* Ajout d'une marge en bas pour le bouton */
+    background-color: #f0f0f0; /* Couleur de fond pour le conteneur du scanner */
+    border-radius: 8px; /* Bords arrondis pour le lecteur */
+    overflow: hidden; /* Important pour que la vidéo ne déborde pas */
 }
 
 #qr-reader video, #qr-reader canvas {
     width: 100% !important;
-    height: auto !important;
-    object-fit: cover !important;
+    height: 100% !important; /* Utilise 100% de la hauteur du conteneur parent */
+    object-fit: contain !important; /* Assure que la vidéo est contenue sans être coupée */
 }
 
 /* Styles pour les labels et inputs/select/textarea à l'intérieur de la modale */
@@ -355,20 +348,20 @@ input[type="email"], input[type="password"] {
 
 /* Styles spécifiques pour les boutons Annuler */
 #btnCancelQR, #btnCancelForm {
-    background-color: #f44336 !important; /* Rouge */
+    background-color: #f44336; /* Rouge */
     color: white;
-    margin-top: 10px !important; /* Marge spécifique pour annuler */
+    margin-top: 10px; /* Marge spécifique pour annuler */
 }
 
 /* Style spécifique pour le bouton Envoyer */
 #obsForm button[type="submit"] {
-    background-color: #4CAF50 !important; /* Vert */
+    background-color: #4CAF50; /* Vert */
     color: white;
 }
 
 /* Style spécifique pour le bouton Fermer (succès) */
 #btnCloseSuccess {
-    background-color: #008CBA !important; /* Bleu */
+    background-color: #008CBA; /* Bleu */
     color: white;
 }
 
