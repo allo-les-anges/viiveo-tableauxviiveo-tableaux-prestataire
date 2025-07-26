@@ -176,7 +176,15 @@ function renderMissions(missions) {
         missionDate.setHours(0, 0, 0, 0);
 
         const missionElement = document.createElement('div');
-        missionElement.className = 'mission-card p-4 mb-3 bg-white rounded-lg shadow-md'; // Tailwind classes for styling
+        // Ajout de styles inline pour assurer la visibilité et un fond blanc
+        missionElement.className = 'mission-card p-4 mb-3 rounded-lg shadow-md'; // Tailwind classes
+        missionElement.style.backgroundColor = '#ffffff'; // Force le fond blanc
+        missionElement.style.border = '1px solid #e0e0e0'; // Ajoute une bordure légère
+        missionElement.style.padding = '1rem'; // Ajoute du padding
+        missionElement.style.marginBottom = '0.75rem'; // Ajoute de la marge en bas
+        missionElement.style.borderRadius = '0.5rem'; // Arrondit les coins
+        missionElement.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'; // Ajoute une ombre
+        
         missionElement.innerHTML = `
             <p class="text-lg font-semibold">ID Mission: ${mission.id}</p>
             <p>Client: ${mission.client}</p>
@@ -211,12 +219,16 @@ function renderMissions(missions) {
 
         if (mission.statut === 'confirmée') {
             missionsAttenteDiv.appendChild(missionElement);
+            console.log(`RENDER MISSIONS: Mission ${mission.id} ajoutée à missions-attente.`);
         } else if (mission.statut === 'en cours') {
             missionsAVenirDiv.appendChild(missionElement);
+            console.log(`RENDER MISSIONS: Mission ${mission.id} ajoutée à missions-a-venir.`);
         } else if (mission.statut === 'terminée') {
             missionsTermineesDiv.appendChild(missionElement);
+            console.log(`RENDER MISSIONS: Mission ${mission.id} ajoutée à missions-terminees.`);
+        } else {
+            console.warn(`RENDER MISSIONS: Statut de mission inconnu pour ID ${mission.id}: ${mission.statut}. Non affichée.`);
         }
-        console.log(`RENDER MISSIONS: Mission ${mission.id} ajoutée à la section ${mission.statut}.`);
     });
     console.log("RENDER MISSIONS: Fin du rendu des missions.");
 }
