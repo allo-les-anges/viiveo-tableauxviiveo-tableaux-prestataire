@@ -1,683 +1,547 @@
-// viiveo-app.js - À placer sur GitHub
+// viiveo-app.js
 
-// Variables globales pour l'état de la mission et du prestataire
-let currentMissionId = null;
-let currentClientPrenom = "", currentClientNom = "";
-let currentPrestatairePrenom = null, currentPrestataireNom = null;
-let currentLatitude = null, currentLongitude = null;
-let heureDebut = null;
+// --- Variables Globales ---
+// Ces variables sont définies dans Embed 1, mais sont répétées ici pour clarté
+// Assurez-vous qu'elles ne sont pas redéclarées avec 'let' ou 'const' si elles le sont déjà dans Embed 1
+// window.webAppUrl = "https://script.google.com/macros/s/AKfycbzEEZZnZJK1BEXlCk81ogi0Aa7MFGunOkjS5s2CCDIZPSkHq0OtPAcEBLrkXp-fpb8aaQ/exec";
+// window.currentEmail = null;
+// window.currentPrenom = null;
+// window.currentNom = null;
 
-// Ajoutez cette variable globale pour l'instance du scanner.
-// Cela permet de la nettoyer correctement à la fermeture de la modale.
-let qrScannerInstance = null; // Correctement déclaré en global
+// Nouvelles variables globales pour le workflow de la mission
+window.currentMissionId = null;
+window.currentClientPrenom = null;
+window.currentClientNom = null;
+window.currentHeureDebutReelle = null; // Stocke l'heure de début réelle de la mission (ISO string)
+window.currentLatitudeDebut = null;
+window.currentLongitudeDebut = null;
 
-// Fonctions liées au scanner et à la modale
-function setTodayDate(obsDateInput) {
-    if (obsDateInput) {
-        obsDateInput.value = new Date().toISOString().split("T")[0];
+let html5QrCodeScanner = null; // Variable pour stocker l'instance du scanner QR
+
+// --- Fonctions Utilitaires ---
+
+/**
+ * Affiche un message à l'utilisateur.
+ * @param {string} message Le message à afficher.
+ * @param {string} type Le type de message ('success', 'error', 'info').
+ */
+function showMessage(message, type) {
+    const messageDiv = document.getElementById('message');
+    if (messageDiv) {
+        messageDiv.textContent = message;
+        messageDiv.style.color = type === 'error' ? 'red' : (type === 'success' ? 'green' : 'blue');
+        setTimeout(() => {
+            messageDiv.textContent = '';
+        }, 5000); // Le message disparaît après 5 secondes
+    } else {
+        console.log(`Message (${type}): ${message}`);
     }
 }
 
-function openModalStartPrestation(missionId, clientPrenom, clientNom) {
-    const modalOverlay = document.getElementById("modalOverlay");
-    const stepQR = document.getElementById("stepQR");
-    const stepForm = document.getElementById("stepForm");
-    const stepSuccess = document.getElementById("stepSuccess");
-    const geolocationMessage = document.getElementById("geolocationMessage"); // Récupérer l'élément du message
+// --- Fonctions de Connexion et Chargement des Missions ---
 
-    if (!modalOverlay || !stepQR || !stepForm || !stepSuccess || !geolocationMessage) {
-        console.error("Erreur: Éléments de la modale ou du message de géolocalisation non trouvés lors de l'ouverture.");
-        alert("Une erreur est survenue lors de l'ouverture de la modale. Veuillez recharger la page.");
+/**
+ * Gère la connexion du prestataire.
+ */
+async function login() {
+    console.log("LOGIN: Fonction login() appelée.");
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const messageDiv = document.getElementById('message');
+    const loaderDiv = document.querySelector('.viiveo-loader');
+    const loginDiv = document.querySelector('.viiveo-login');
+    const missionsDiv = document.querySelector('.viiveo-missions');
+
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    if (!email || !password) {
+        showMessage('Veuillez entrer votre e-mail et votre mot de passe.', 'error');
         return;
     }
 
-    if (!window.currentEmail) {
-        alert("Erreur: Les données du prestataire ne sont pas chargées. Veuillez vous reconnecter.");
-        console.error("Tentative d'ouvrir la modale sans données prestataire (email null).");
-        return;
-    }
+    loaderDiv.style.display = 'block';
+    loginDiv.style.display = 'none';
+    messageDiv.textContent = ''; // Efface les messages précédents
 
-    currentMissionId = missionId;
-    currentClientPrenom = clientPrenom;
-    currentClientNom = clientNom;
-    currentPrestatairePrenom = window.currentPrenom;
-    currentPrestataireNom = window.currentNom;
+    const loginUrl = new URL(window.webAppUrl);
+    loginUrl.searchParams.append('type', 'loginpresta');
+    loginUrl.searchParams.append('email', email);
+    loginUrl.searchParams.append('password', password);
 
-    // S'assurer que les étapes sont dans le bon ordre d'affichage
-    stepQR.style.display = "none";
-    stepForm.style.display = "none";
-    stepSuccess.style.display = "none";
-    geolocationMessage.style.display = "none"; // Masquer le message de géolocalisation au début
-    geolocationMessage.textContent = ""; // Vider le texte
-    modalOverlay.style.display = "flex"; // Rend la modale visible
-
-    // Démarre le scanner APRES que la modale est rendue visible
-    setTimeout(() => {
-        startQrScanner();
-    }, 50); // Un délai de 50ms pour la robustesse.
-}
-
-function closeModal() {
-    const modalOverlay = document.getElementById("modalOverlay");
-    if (modalOverlay) {
-        modalOverlay.style.display = "none"; // CACHE LA MODALE ICI
-    }
-    const obsForm = document.getElementById("obsForm");
-    if (obsForm) {
-        clearForm(obsForm); // Assurez-vous que cette fonction existe et vide bien les champs
-    }
-    const geolocationMessage = document.getElementById("geolocationMessage");
-    if (geolocationMessage) {
-        geolocationMessage.style.display = "none";
-        geolocationMessage.textContent = "";
-    }
-    // Arrête le scanner si une instance est active
-    if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
-        qrScannerInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
-    }
-    qrScannerInstance = null; // Nettoyer la référence de manière inconditionnelle après tentative d'arrêt
-}
-
-async function startQrScanner() {
-    const qrReaderElement = document.getElementById("qr-reader");
-    const geolocationMessage = document.getElementById("geolocationMessage");
-
-    if (!qrReaderElement) {
-        console.error("Élément 'qr-reader' non trouvé. Le scanner ne peut pas démarrer.");
-        alert("Erreur: Le scanner QR ne peut pas démarrer (élément manquant).");
-        closeModal();
-        return;
-    }
-
-    const stepQR = document.getElementById("stepQR");
-    if (stepQR) {
-        stepQR.style.display = "flex"; // S'assure que stepQR est visible pour le scanner
-    }
-
-    qrReaderElement.innerHTML = ""; // Nettoie l'élément avant de redémarrer le scanner.
-
-    // Si une instance existe déjà et est active, arrêtez-la et mettez-la à null pour éviter les conflits
-    if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
-        try {
-            await qrScannerInstance.stop();
-            console.log("Ancienne instance du scanner arrêtée.");
-        } catch (error) {
-            console.warn("Erreur lors de l'arrêt d'une ancienne instance de scanner:", error);
-        } finally {
-            qrScannerInstance = null;
-        }
-    }
-
-    qrScannerInstance = new Html5Qrcode("qr-reader"); // Affectation à la variable globale
-
-    console.log("Tentative de démarrage du scanner QR...");
+    console.log("LOGIN: URL d'API générée:", loginUrl.toString());
 
     try {
-        await qrScannerInstance.start(
-            { facingMode: "environment" }, // Utilise la caméra arrière
-            {
-                fps: 10,
-                qrbox: { width: 250, height: 250 },
-                aspectRatio: 1.333334
-            },
-            async (decodedText, decodedResult) => {
-                console.log(`QR Code détecté: ${decodedText}`);
-                try {
-                    // Arrête le scanner immédiatement après la détection
-                    if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
-                        await qrScannerInstance.stop();
-                        qrScannerInstance = null;
-                        console.log("Scanner arrêté après détection réussie.");
-                    }
+        const data = await callApiJsonp(loginUrl.toString(), 'loginCallback');
+        console.log("LOGIN: Réponse de l'API de login:", data);
 
-                    const url = new URL(decodedText);
-                    const idClient = url.searchParams.get("idclient") || url.searchParams.get("clientId");
-                    if (!idClient) throw new Error("QR invalide : idclient manquant");
-
-                    console.log("ID Client extrait:", idClient);
-                    console.log("Email prestataire global (window.currentEmail):", window.currentEmail);
-                    console.log("URL Apps Script globale (window.webAppUrl):", window.webAppUrl);
-
-                    // --- NOUVEAU: Récupérer la géolocalisation AVANT l'appel API pour l'envoyer directement ---
-                    let currentLat, currentLon;
-                    if (!navigator.geolocation) {
-                        if (geolocationMessage) {
-                            geolocationMessage.textContent = "❌ Votre appareil ne supporte pas la géolocalisation.";
-                            geolocationMessage.style.display = "block";
-                            geolocationMessage.style.color = "#d32f2f";
-                        }
-                        console.error("Géolocalisation non supportée.");
-                        return; // Arrête l'exécution si la géolocalisation n'est pas supportée
-                    }
-
-                    // Afficher un message d'attente pour la géolocalisation
-                    if (geolocationMessage) {
-                        geolocationMessage.textContent = "Veuillez autoriser la géolocalisation...";
-                        geolocationMessage.style.display = "block";
-                        geolocationMessage.style.color = "#333"; // Couleur neutre
-                    }
-
-                    try {
-                        const position = await new Promise((resolve, reject) => {
-                            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
-                        });
-                        currentLat = position.coords.latitude;
-                        currentLon = position.coords.longitude;
-                        // Mettre à jour les variables globales pour le cas où le formulaire s'ouvre
-                        currentLatitude = currentLat;
-                        currentLongitude = currentLon;
-                        if (geolocationMessage) geolocationMessage.style.display = "none"; // Masquer le message en cas de succès
-                    } catch (geoError) {
-                        let geoMessage = "⚠️ Erreur de géolocalisation.";
-                        switch (geoError.code) {
-                            case geoError.PERMISSION_DENIED:
-                                geoMessage = "❌ Vous devez autoriser la géolocalisation pour continuer.";
-                                break;
-                            case geoError.POSITION_UNAVAILABLE:
-                                geoMessage = "📍 Position non disponible.";
-                                break;
-                            case geoError.TIMEOUT:
-                                geoMessage = "⏱️ Le délai de localisation est dépassé.";
-                                break;
-                            default:
-                                geoMessage = "❌ Erreur inconnue.";
-                        }
-                        if (geolocationMessage) {
-                            geolocationMessage.textContent = geoMessage;
-                            geolocationMessage.style.display = "block";
-                            geolocationMessage.style.color = "#d32f2f"; // Couleur d'erreur
-                        }
-                        console.error("Erreur de géolocalisation lors du scan:", geoError);
-                        return; // Arrête l'exécution si la géolocalisation échoue
-                    }
-                    // --- FIN NOUVEAU ---
-
-                    // Envoyer la géolocalisation avec l'appel API
-                    const fullAppsScriptApiUrl = `${window.webAppUrl}?type=verifqr&idclient=${encodeURIComponent(idClient)}&email=${encodeURIComponent(window.currentEmail)}&latitude=${encodeURIComponent(currentLat)}&longitude=${encodeURIComponent(currentLon)}`;
-                    console.log("URL COMPLETE ENVOYEE AU BACKEND:", fullAppsScriptApiUrl);
-
-                    const callbackName = 'cbVerifyClient' + Date.now();
-                    const data = await callApiJsonp(fullAppsScriptApiUrl, callbackName);
-
-                    if (!data.success) {
-                        alert("❌ " + data.message); // Garder l'alerte ici pour les erreurs de vérification du QR
-                        closeModal();
-                        return;
-                    }
-
-                    // NOUVEAU LOGIQUE BASÉE SUR LE STATUT DE LA MISSION RENVOYÉ PAR LE BACKEND
-                    if (data.missionStatus === "started") { // Le backend indique que la mission vient de démarrer
-                        heureDebut = new Date().toISOString(); // Enregistrer l'heure de début côté client
-                        alert("✅ Mission démarrée avec succès !");
-                        closeModal();
-                        if (window.currentEmail) {
-                            await window.loadMissions(window.currentEmail); // Recharger la liste des missions
-                        }
-                    } else if (data.missionStatus === "readyForEnd") { // Le backend indique que la mission est en cours et prête pour la fin
-                        // Les variables globales currentLatitude, currentLongitude, heureDebut devraient déjà être définies
-                        // par le premier scan ou par le backend si l'app a été fermée.
-                        // Pour le moment, nous nous fions à celles définies au premier scan.
-                        getGeolocationAndShowForm(); // Procéder au formulaire d'observation
-                    } else {
-                        alert("Statut de mission inattendu : " + (data.message || "Erreur inconnue."));
-                        closeModal();
-                    }
-
-                } catch (err) {
-                    alert("Erreur lors du scan QR : " + (err.message || "Erreur inconnue"));
-                    console.error("Erreur dans startQrScanner (callback de succès - détails complètes):", err);
-                    closeModal();
-                }
-            },
-            (errorMessage) => {
-                // Cette fonction est appelée pour les erreurs de progression (par exemple, pas de QR code trouvé)
-                // console.warn("QR Scan progress error:", errorMessage); // Re-commenté comme il peut être trop verbeux
-            }
-        );
-        console.log("Scanner QR démarré avec succès.");
-    } catch (err) {
-        // Cette fonction est appelée si le scanner ne peut pas démarrer du tout (par ex. problème de caméra, permissions)
-        alert("Impossible d’activer la caméra. Assurez-vous d'avoir donné les permissions et que la caméra n'est pas utilisée par une autre application.");
-        console.error("Erreur d'initialisation de la caméra (détails complètes):", err);
-        closeModal();
+        if (data.success) {
+            window.setPrestataireData(data.email, data.prenom, data.nom); // Met à jour les variables globales
+            showMessage('Connexion réussie !', 'success');
+            loginDiv.style.display = 'none';
+            missionsDiv.style.display = 'block';
+            console.log("LOGIN: Missions chargées après connexion réussie.");
+        } else {
+            showMessage(data.message || 'Erreur de connexion.', 'error');
+            loginDiv.style.display = 'block'; // Réaffiche le formulaire de login
+        }
+    } catch (error) {
+        console.error("LOGIN: Erreur lors de l'appel API de login:", error);
+        showMessage('Erreur de communication avec le serveur.', 'error');
+        loginDiv.style.display = 'block'; // Réaffiche le formulaire de login
+    } finally {
+        loaderDiv.style.display = 'none';
+        console.log("LOGIN: Fonction login() terminée.");
     }
 }
 
-function getGeolocationAndShowForm() {
-    // Cette fonction est maintenant simple car la géolocalisation est gérée dans startQrScanner
-    // Elle est appelée UNIQUEMENT quand le backend a confirmé que c'est un scan de fin de mission.
-    showForm();
-}
-
-function showForm() {
-    const stepQR = document.getElementById("stepQR");
-    const stepForm = document.getElementById("stepForm");
-    const clientNameInput = document.getElementById("clientName");
-    const obsDateInput = document.getElementById("obsDate");
-
-    if (!stepQR || !stepForm || !clientNameInput || !obsDateInput) {
-        console.error("Éléments du formulaire de prestation non trouvés pour l'affichage.");
-        alert("Erreur: Impossible d'afficher le formulaire de prestation. Veuillez recharger la page.");
-        closeModal();
+/**
+ * Charge les missions pour le prestataire connecté.
+ * @param {string} email L'email du prestataire.
+ */
+async function loadMissions() {
+    console.log("LOAD MISSIONS: Fonction loadMissions() appelée.");
+    if (!window.currentEmail) {
+        console.log("LOAD MISSIONS: Pas d'email prestataire, ne charge pas les missions.");
         return;
     }
 
-    stepQR.style.display = "none";
-    stepForm.style.display = "flex"; // Correctement en "flex"
-    clientNameInput.value = `${currentClientPrenom} ${currentClientNom}`;
-    setTodayDate(obsDateInput);
+    const loaderDiv = document.querySelector('.viiveo-loader');
+    loaderDiv.style.display = 'block';
+
+    const missionsUrl = new URL(window.webAppUrl);
+    missionsUrl.searchParams.append('type', 'missionspresta');
+    missionsUrl.searchParams.append('email', window.currentEmail);
+
+    console.log("LOAD MISSIONS: URL d'API générée:", missionsUrl.toString());
+
+    try {
+        const data = await callApiJsonp(missionsUrl.toString(), 'missionsCallback');
+        console.log("LOAD MISSIONS: Réponse de l'API des missions:", data);
+
+        if (data.success && data.missions) {
+            renderMissions(data.missions);
+            console.log("LOAD MISSIONS: Tableaux de missions rendus avec succès.");
+        } else {
+            showMessage(data.message || 'Aucune mission trouvée.', 'info');
+            renderMissions([]); // Affiche des tableaux vides
+        }
+    } catch (error) {
+        console.error("LOAD MISSIONS: Erreur lors de l'appel API des missions:", error);
+        showMessage('Erreur lors du chargement des missions.', 'error');
+    } finally {
+        loaderDiv.style.display = 'none';
+    }
 }
 
-function clearFormFields() {
-    const obsDateInput = document.getElementById("obsDate");
-    const etatSanteInput = document.getElementById("etatSante");
-    const etatFormeInput = document.getElementById("etatForme");
-    const environnementInput = document.getElementById("environnement");
-    const photosInput = document.getElementById("photos");
-    const photosPreview = document.getElementById("photosPreview");
+/**
+ * Rend les missions dans les sections appropriées du DOM.
+ * @param {Array<Object>} missions La liste des missions.
+ */
+function renderMissions(missions) {
+    const missionsAttenteDiv = document.getElementById('missions-attente');
+    const missionsAVenirDiv = document.getElementById('missions-a-venir');
+    const missionsTermineesDiv = document.getElementById('missions-terminees');
 
-    if (obsDateInput) obsDateInput.value = "";
-    if (etatSanteInput) etatSanteInput.value = "";
-    if (etatFormeInput) etatFormeInput.value = "";
-    if (environnementInput) environnementInput.value = "";
-    if (photosInput) photosInput.value = "";
-    if (photosPreview) photosPreview.innerHTML = "";
-}
+    missionsAttenteDiv.innerHTML = '';
+    missionsAVenirDiv.innerHTML = '';
+    missionsTermineesDiv.innerHTML = '';
 
-// Rendre la fonction show globale
-window.show = function(el, visible) {
-    if (!el) return;
-    el.style.display = visible ? "block" : "none";
-};
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Pour comparer uniquement la date
 
+    missions.forEach(mission => {
+        const missionDate = new Date(mission.date); // Assurez-vous que mission.date est un format valide pour Date()
+        missionDate.setHours(0, 0, 0, 0);
 
-function tempDisable(btn, ms = 1000) {
-    if (!btn) return;
-    btn.disabled = true;
-    setTimeout(() => {
-        btn.disabled = false;
-    }, ms);
-}
+        const missionElement = document.createElement('div');
+        missionElement.className = 'mission-card p-4 mb-3 bg-white rounded-lg shadow-md'; // Tailwind classes for styling
+        missionElement.innerHTML = `
+            <p class="text-lg font-semibold">ID Mission: ${mission.id}</p>
+            <p>Client: ${mission.client}</p>
+            <p>Service: ${mission.service}</p>
+            <p>Date: ${mission.date} à ${mission.heure}</p>
+            <p>Statut: <span class="font-bold ${mission.statut === 'confirmée' ? 'text-blue-600' : (mission.statut === 'en cours' ? 'text-orange-600' : 'text-green-600')}">${mission.statut}</span></p>
+            <button class="scan-qr-button mt-3 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                    data-mission-id="${mission.id}"
+                    data-client-id="${mission.idClientQR}"
+                    data-client-prenom="${mission.prenomClient}"
+                    data-client-nom="${mission.nomClient}"
+                    data-heure-debut-reelle="${mission.heureDebutReelle || ''}"
+                    data-latitude-debut="${mission.latitudeDebut || ''}"
+                    data-longitude-debut="${mission.longitudeDebut || ''}">
+                Scanner QR
+            </button>
+        `;
 
-function createElementFromHTML(htmlString) {
-    const div = document.createElement('div');
-    div.innerHTML = htmlString.trim();
-    return div.firstChild;
-}
+        const scanButton = missionElement.querySelector('.scan-qr-button');
+        scanButton.addEventListener('click', () => {
+            // Stocker les infos de la mission dans des variables globales temporaires avant le scan
+            // Ces infos seront utilisées par handleScanResult si la mission est 'readyForEnd'
+            window.currentMissionId = scanButton.dataset.missionId;
+            window.currentClientPrenom = scanButton.dataset.clientPrenom;
+            window.currentClientNom = scanButton.dataset.clientNom;
+            window.currentHeureDebutReelle = scanButton.dataset.heureDebutReelle;
+            window.currentLatitudeDebut = scanButton.dataset.latitudeDebut;
+            window.currentLongitudeDebut = scanButton.dataset.longitudeDebut;
 
-// Nouvelle fonction pour initialiser les écouteurs de la modale d'observation
-function initializeModalListeners() {
-    const modalOverlay = document.getElementById("modalOverlay");
-    const stepQR = document.getElementById("stepQR");
-    const stepForm = document.getElementById("stepForm");
-    const stepSuccess = document.getElementById("stepSuccess");
-    const obsForm = document.getElementById("obsForm");
-    const photosInput = document.getElementById("photos");
-    const photosPreview = document.getElementById("photosPreview");
-    const clientNameInput = document.getElementById("clientName");
-    const obsDateInput = document.getElementById("obsDate");
-    const etatSanteInput = document.getElementById("etatSante");
-    const etatFormeInput = document.getElementById("etatForme");
-    const environnementInput = document.getElementById("environnement");
-
-    // Vérifier si tous les éléments essentiels de la modale sont présents
-    if (modalOverlay && stepQR && stepForm && stepSuccess && obsForm && photosInput && photosPreview && clientNameInput && obsDateInput && etatSanteInput && etatFormeInput && environnementInput) {
-        // Attachez le change listener pour les photos
-        photosInput.addEventListener("change", e => {
-            photosPreview.innerHTML = "";
-            const files = e.target.files;
-            if (files.length > 3) {
-                alert("Vous ne pouvez sélectionner que 3 photos max.");
-                photosInput.value = "";
-                return;
-            }
-            // Utilisation de Promise.all pour s'assurer que toutes les images sont chargées avant de les afficher
-            const fileReaders = Array.from(files).map(file => {
-                return new Promise(resolve => {
-                    const reader = new FileReader();
-                    reader.onload = ev => {
-                        const img = document.createElement("img");
-                        img.src = ev.target.result;
-                        photosPreview.appendChild(img);
-                        resolve();
-                    };
-                    reader.readAsDataURL(file);
-                });
-            });
-            Promise.all(fileReaders).then(() => {
-                console.log("Toutes les photos ont été prévisualisées.");
-            });
+            // Démarrer le scanner, qui appellera handleScanResult avec les données du QR
+            startQrScanner();
         });
 
-        // Attachez le submit listener pour le formulaire d'observation
-        obsForm.addEventListener("submit", async e => {
-            e.preventDefault();
+        if (mission.statut === 'confirmée') {
+            missionsAttenteDiv.appendChild(missionElement);
+        } else if (mission.statut === 'en cours') {
+            missionsAVenirDiv.appendChild(missionElement); // Les missions "en cours" sont aussi "à venir" dans ce contexte
+        } else if (mission.statut === 'terminée') {
+            missionsTermineesDiv.appendChild(missionElement);
+        }
+    });
+}
 
-            if (photosInput.files.length > 3) {
-                alert("Maximum 3 photos autorisées.");
-                return;
-            }
 
-            if (!window.currentEmail) {
-                alert("Erreur: Données du prestataire manquantes pour l'envoi.");
-                console.error("Tentative d'envoi de formulaire sans email prestataire.");
-                return;
-            }
+// --- Fonctions du Scanner QR ---
 
-            const heureFin = new Date().toISOString();
-            const formData = new FormData();
-            formData.append("type", "envoyerFiche");
-            formData.append("missionId", currentMissionId);
-            formData.append("prenomClient", currentClientPrenom);
-            formData.append("nomClient", currentClientNom);
-            formData.append("obsDate", obsDateInput.value);
-            formData.append("etatSante", etatSanteInput.value);
-            formData.append("etatForme", etatFormeInput.value);
-            formData.append("environnement", environnementInput.value);
-            formData.append("latitude", currentLatitude); // Utilise la latitude globale définie au début ou à la fin
-            formData.append("longitude", currentLongitude); // Utilise la longitude globale
-            formData.append("heureDebut", heureDebut); // Utilise l'heure de début globale
-            formData.append("heureFin", heureFin);
-            formData.append("prestatairePrenom", window.currentPrenom);
-            formData.append("prestataireNom", window.currentNom);
-            formData.append("prestataireEmail", window.currentEmail);
+/**
+ * Démarre le scanner QR.
+ */
+function startQrScanner() {
+    console.log("Tentative de démarrage du scanner QR...");
+    const qrCodeRegion = document.getElementById('qr-code-reader');
+    if (!qrCodeRegion) {
+        showMessage('Erreur: Élément pour le scanner QR introuvable.', 'error');
+        return;
+    }
 
-            for (let file of photosInput.files) {
-                formData.append("photos", file);
-            }
+    // Créer une modale pour le scanner
+    const scannerModal = document.createElement('div');
+    scannerModal.id = 'scannerModal';
+    scannerModal.className = 'fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50';
+    scannerModal.innerHTML = `
+        <div class="bg-white p-6 rounded-lg shadow-xl w-11/12 max-w-lg relative">
+            <h2 class="text-2xl font-bold mb-4">Scanner QR Code</h2>
+            <div id="qr-code-reader" style="width: 100%;"></div>
+            <button id="closeScannerModal" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+        </div>
+    `;
+    document.body.appendChild(scannerModal);
 
-            try {
-                const res = await fetch(window.webAppUrl, {
-                    method: "POST",
-                    body: formData,
-                });
-                const json = await res.json();
-                if (json.success) {
-                    stepForm.style.display = "none";
-                    stepSuccess.style.display = "flex"; // Changed to flex for consistency with modalContent
-                    if (typeof window.loadMissions === 'function' && window.currentEmail) {
-                        window.loadMissions(window.currentEmail);
+    const html5QrCodeRegion = scannerModal.querySelector('#qr-code-reader');
+
+    html5QrCodeScanner = new Html5Qrcode("qr-code-reader"); // Initialise le scanner sur l'élément créé dans la modale
+    html5QrCodeScanner.start(
+        { facingMode: "environment" }, // Utilise la caméra arrière
+        {
+            fps: 10,    // Nombre d'images par seconde pour le scan
+            qrbox: { width: 250, height: 250 } // Taille de la zone de scan
+        },
+        (qrCodeMessage) => {
+            // Appelé quand un QR code est détecté
+            handleScanResult(qrCodeMessage);
+            scannerModal.remove(); // Ferme la modale après le scan
+        },
+        (errorMessage) => {
+            // Appelé en cas d'erreur ou si aucun QR n'est détecté
+            // console.log(`QR Code no match: ${errorMessage}`); // Peut être très verbeux
+        }
+    ).then(() => {
+        console.log("Scanner QR démarré avec succès.");
+    }).catch((err) => {
+        console.error("Erreur lors du démarrage du scanner QR:", err);
+        showMessage('Impossible de démarrer le scanner QR. Vérifiez les permissions de la caméra.', 'error');
+        scannerModal.remove(); // Ferme la modale en cas d'erreur
+    });
+
+    // Écouteur pour fermer la modale
+    scannerModal.querySelector('#closeScannerModal').addEventListener('click', () => {
+        if (html5QrCodeScanner.is = Html5QrcodeSupported) { // Correction: isScanning n'est pas une propriété statique
+             html5QrCodeScanner.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
+        }
+        scannerModal.remove();
+    });
+}
+
+/**
+ * Gère le résultat du scan QR et interagit avec l'API Apps Script.
+ * @param {string} qrData Les données brutes lues par le QR code.
+ */
+async function handleScanResult(qrData) {
+    console.log("QR Code détecté:", qrData);
+    if (html5QrCodeScanner && html5QrCodeScanner.isScanning) { // Vérifie si le scanner est actif avant de l'arrêter
+        await html5QrCodeScanner.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
+    }
+
+    // Extraire les paramètres de l'URL du QR code
+    const url = new URL(qrData);
+    const idClientQR = url.searchParams.get('idclient') || url.searchParams.get('clientId');
+    // L'email du prestataire peut aussi être dans le QR, mais nous utilisons window.currentEmail pour la cohérence
+    // const emailFromQR = url.searchParams.get('email');
+
+    if (!idClientQR) {
+        showMessage('Erreur: ID client non trouvé dans le QR code.', 'error');
+        return;
+    }
+
+    // Utiliser l'email du prestataire actuellement connecté
+    const prestataireEmail = window.currentEmail;
+
+    if (!prestataireEmail) {
+        showMessage('Erreur: Email du prestataire non disponible. Veuillez vous reconnecter.', 'error');
+        return;
+    }
+
+    console.log("ID Client extrait:", idClientQR);
+    console.log("Email prestataire global (window.currentEmail):", prestataireEmail);
+    console.log("URL Apps Script globale (window.webAppUrl):", window.webAppUrl);
+
+    // Obtenir la géolocalisation
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                console.log(`Géolocalisation obtenue: Lat ${lat}, Lon ${lon}`);
+
+                // Construire l'URL pour la vérification QR
+                const verifUrl = new URL(window.webAppUrl);
+                verifUrl.searchParams.append('type', 'verifqr');
+                verifUrl.searchParams.append('idclient', idClientQR);
+                verifUrl.searchParams.append('email', prestataireEmail);
+                verifUrl.searchParams.append('latitude', lat);
+                verifUrl.searchParams.append('longitude', lon);
+
+                // Appel à l'API Apps Script pour vérifier le QR
+                try {
+                    const data = await callApiJsonp(verifUrl.toString(), 'verifqrCallback');
+                    console.log("Réponse de l'API verifqr:", data);
+
+                    if (data.success) {
+                        showMessage(data.message, 'success');
+                        // Gérer les différents statuts de mission
+                        if (data.missionStatus === 'started') {
+                            // Mission vient d'être démarrée (premier scan)
+                            loadMissions(); // Recharger les missions pour mettre à jour l'affichage
+                        } else if (data.missionStatus === 'readyForEnd') {
+                            // Mission est en cours, prête pour la fin (deuxième scan)
+                            // Stocker les infos de la mission pour le formulaire d'observation
+                            window.currentMissionId = data.mission.id;
+                            window.currentClientPrenom = data.client.prenom;
+                            window.currentClientNom = data.client.nom;
+                            window.currentHeureDebutReelle = data.mission.heureDebutReelle; // Récupère l'heure de début réelle
+                            window.currentLatitudeDebut = data.mission.latitude; // Récupère la latitude de début
+                            window.currentLongitudeDebut = data.mission.longitude; // Récupère la longitude de début
+
+                            openObservationModal(); // Ouvrir la modale de fiche d'observation
+                        } else if (data.missionStatus === 'completed') {
+                            // Mission déjà terminée
+                            showMessage(data.message, 'info');
+                            loadMissions(); // Rafraîchir au cas où
+                        }
+                    } else {
+                        showMessage(data.message, 'error');
                     }
-                } else {
-                    alert("Erreur : " + (json.message || "Envoi échoué"));
+                } catch (error) {
+                    console.error("Erreur lors de l'appel API verifqr:", error);
+                    showMessage('Erreur de communication avec le serveur.', 'error');
                 }
-            } catch (err) {
-                alert("Erreur réseau ou du serveur lors de l'envoi de la fiche.");
-                console.error("Erreur lors de l'envoi de la fiche:", err);
-            }
-        });
-
-        // Attachez les écouteurs pour les boutons de la modale ici
-        if (document.querySelector("#btnCancelQR")) document.querySelector("#btnCancelQR").onclick = closeModal;
-        if (document.querySelector("#btnCancelForm")) document.querySelector("#btnCancelForm").onclick = closeModal;
-        if (document.querySelector("#btnCloseSuccess")) document.querySelector("#btnCloseSuccess").onclick = closeModal;
-
-        console.log("Écouteurs de la modale d'observation initialisés.");
-
+            },
+            (error) => {
+                console.error("Erreur de géolocalisation lors du scan:", error);
+                showMessage('Impossible d\'obtenir la position GPS. Veuillez autoriser la géolocalisation.', 'error');
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
     } else {
-        console.warn("Certains éléments de la modale d'observation sont manquants. Nouvelle tentative d'initialisation des écouteurs de modale...");
-        setTimeout(initializeModalListeners, 100);
+        showMessage('La géolocalisation n\'est pas supportée par ce navigateur.', 'error');
     }
 }
 
-function initializeLoginForm() {
-    const loginForm = document.getElementById("loginForm");
-    console.log("DEBUG initializeLoginForm: loginForm element:", loginForm);
-    console.log("DEBUG initializeLoginForm: typeof window.login:", typeof window.login);
+// --- Modale de Fiche d'Observation ---
 
-    if (loginForm && typeof window.login === 'function') {
-        loginForm.removeEventListener("submit", window.login);
-        loginForm.addEventListener("submit", window.login);
-        console.log("Écouteur de soumission ajouté au formulaire de connexion.");
-    } else {
-        console.warn("Formulaire de connexion ou fonction 'login' non disponible. Nouvelle tentative...");
-        setTimeout(initializeLoginForm, 200);
-    }
-}
-
-// Cette fonction crée et injecte le HTML de la modale dynamiquement
-function createAndInjectModalHtml() {
+/**
+ * Ouvre la modale pour la fiche d'observation.
+ */
+function openObservationModal() {
+    console.log("Ouverture de la modale d'observation...");
     const modalHtml = `
-        <div id="modalOverlay" style="display: none;">
-            <div id="modalContent">
-                <div id="stepQR" style="display:none;">
-                    <h2>📸 Scanner le QR code client</h2>
-                    <div id="qr-reader"></div>
-                    <p id="geolocationMessage" style="color: #333; font-weight: bold; text-align: center; margin-top: 15px; display: none;"></p>
-                    <button id="btnCancelQR">Annuler</button>
-                </div>
-
-                <div id="stepForm" style="display:none;">
-                    <h2>📝 Fiche d'observation</h2>
-                    <form id="obsForm">
-                        <label for="clientName">Nom du client</label>
-                        <input type="text" id="clientName" readonly />
-                        <label for="obsDate">Date de l'observation</label>
-                        <input type="date" id="obsDate" required />
-                        <label for="etatSante">État de santé</label>
-                        <textarea id="etatSante" rows="3" placeholder="Décrire l'état de santé..."></textarea>
-                        <label for="etatForme">État de forme</label>
-                        <select id="etatForme" required>
-                            <option value="">-- Choisir --</option>
-                            <option>Très bon</option>
-                            <option>Bon</option>
-                            <option>Moyen</option>
-                            <option>Faible</option>
-                            <option>Très faible</option>
-                        </select>
-                        <label for="environnement">Environnement</label>
-                        <textarea id="environnement" rows="3" placeholder="Décrire l'environnement..."></textarea>
-                        <label for="photos">Photos (max 3)</label>
-                        <input type="file" id="photos" accept="image/*" multiple />
-                        <div id="photosPreview"></div>
-                        <button type="submit">Envoyer la fiche</button>
-                        <button type="button" id="btnCancelForm">Annuler</button>
-                    </form>
-                </div>
-
-                <div id="stepSuccess" style="display:none;">
-                    <h2>✅ Fiche envoyée avec succès !</h2>
-                    <button id="btnCloseSuccess">Fermer</button>
-                </div>
+        <div id="observationModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md relative overflow-y-auto max-h-[90vh]">
+                <h2 class="text-2xl font-bold mb-4 text-center">Fiche d'Observation</h2>
+                <button id="closeObservationModal" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                
+                <p class="mb-2"><strong>Mission ID:</strong> <span id="modalMissionId">${window.currentMissionId || 'N/A'}</span></p>
+                <p class="mb-4"><strong>Client:</strong> <span id="modalClientName">${window.currentClientPrenom || ''} ${window.currentClientNom || ''}</span></p>
+                
+                <form id="observationForm" class="space-y-4">
+                    <div>
+                        <label for="obsDate" class="block text-sm font-medium text-gray-700">Date d'Observation:</label>
+                        <input type="date" id="obsDate" name="obsDate" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required>
+                    </div>
+                    <div>
+                        <label for="etatSante" class="block text-sm font-medium text-gray-700">État de Santé:</label>
+                        <textarea id="etatSante" name="etatSante" rows="4" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" placeholder="Décrivez l'état de santé du client..." required></textarea>
+                    </div>
+                    <div>
+                        <label for="etatForme" class="block text-sm font-medium text-gray-700">État de Forme:</label>
+                        <input type="text" id="etatForme" name="etatForme" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" placeholder="Ex: Bonne, Fatigué..." required>
+                    </div>
+                    <div>
+                        <label for="environnement" class="block text-sm font-medium text-gray-700">Environnement:</label>
+                        <textarea id="environnement" name="environnement" rows="4" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" placeholder="Décrivez l'environnement de la mission..." required></textarea>
+                    </div>
+                    <div>
+                        <label for="photos" class="block text-sm font-medium text-gray-700">Photos (optionnel):</label>
+                        <input type="file" id="photos" name="photos" accept="image/*" multiple class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50">
+                        Clôturer la Mission et Envoyer la Fiche
+                    </button>
+                </form>
             </div>
         </div>
     `;
+
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    console.log("Modal HTML injected dynamically via JS.");
+
+    const observationModal = document.getElementById('observationModal');
+    const closeButton = document.getElementById('closeObservationModal');
+    const observationForm = document.getElementById('observationForm');
+    const obsDateInput = document.getElementById('obsDate');
+
+    // Pré-remplir la date d'observation avec la date du jour
+    const today = new Date();
+    obsDateInput.value = today.toISOString().split('T')[0];
+
+    closeButton.addEventListener('click', () => {
+        observationModal.remove();
+        // Optionnel: Réinitialiser les variables globales de la mission si la modale est fermée sans soumission
+        window.currentMissionId = null;
+        window.currentClientPrenom = null;
+        window.currentClientNom = null;
+        window.currentHeureDebutReelle = null;
+        window.currentLatitudeDebut = null;
+        window.currentLongitudeDebut = null;
+    });
+
+    observationForm.addEventListener('submit', submitObservationForm);
+    console.log("Écouteurs de la modale d'observation initialisés.");
 }
 
-// Rendre la fonction login globale pour qu'elle soit accessible par le formulaire
-window.login = async function() {
-    console.log("LOGIN: Fonction login() appelée.");
-    const email = document.getElementById("email")?.value.trim();
-    const password = document.getElementById("password")?.value.trim();
-    const message = document.getElementById("message");
-    const loader = document.querySelector(".viiveo-loader");
-    const form = document.querySelector(".viiveo-login");
-    const missionsBlock = document.querySelector(".viiveo-missions");
+/**
+ * Gère la soumission du formulaire de fiche d'observation.
+ * @param {Event} event L'événement de soumission du formulaire.
+ */
+async function submitObservationForm(event) {
+    event.preventDefault();
+    console.log("Soumission du formulaire d'observation...");
 
-    if (!email || !password) {
-        if (message) message.textContent = "Champs requis.";
-        console.log("LOGIN: Champs email/password requis.");
-        return;
+    const form = event.target;
+    const formData = new FormData(form);
+
+    const loaderDiv = document.querySelector('.viiveo-loader');
+    loaderDiv.style.display = 'block';
+    const observationModal = document.getElementById('observationModal');
+    if (observationModal) observationModal.style.display = 'none'; // Cacher la modale pendant le chargement
+
+    const submitUrl = new URL(window.webAppUrl);
+    submitUrl.searchParams.append('type', 'ficheobservation'); // Type pour l'API Apps Script
+
+    // Ajouter les données de la mission et du prestataire
+    submitUrl.searchParams.append('missionId', window.currentMissionId);
+    submitUrl.searchParams.append('prenomClient', window.currentClientPrenom);
+    submitUrl.searchParams.append('nomClient', window.currentClientNom);
+    submitUrl.searchParams.append('heureDebut', window.currentHeureDebutReelle); // Heure de début réelle stockée
+    submitUrl.searchParams.append('latitude', window.currentLatitudeDebut); // Latitude de début réelle stockée
+    submitUrl.searchParams.append('longitude', window.currentLongitudeDebut); // Longitude de début réelle stockée
+    submitUrl.searchParams.append('prestatairePrenom', window.currentPrenom);
+    submitUrl.searchParams.append('prestataireNom', window.currentNom);
+    submitUrl.searchParams.append('prestataireEmail', window.currentEmail);
+
+    // Ajouter les données du formulaire
+    submitUrl.searchParams.append('obsDate', formData.get('obsDate'));
+    submitUrl.searchParams.append('etatSante', formData.get('etatSante'));
+    submitUrl.searchParams.append('etatForme', formData.get('etatForme'));
+    submitUrl.searchParams.append('environnement', formData.get('environnement'));
+
+    // Gérer les fichiers (photos)
+    const files = formData.getAll('photos');
+    let fetchOptions = { method: 'POST' };
+    let body = new FormData(); // Utiliser un nouveau FormData pour l'envoi
+
+    // Ajouter tous les paramètres à FormData, y compris les fichiers
+    for (const [key, value] of submitUrl.searchParams.entries()) {
+        body.append(key, value);
     }
-    if (message) message.textContent = "";
-    window.show(loader, true);
-    tempDisable(document.querySelector(".viiveo-login button"), 3000);
-    console.log("LOGIN: Tentative de connexion avec email:", email);
+    files.forEach((file, index) => {
+        if (file.size > 0) { // S'assurer que le fichier n'est pas vide
+            body.append('photos', file, file.name); // 'photos' doit correspondre à e.parameters.photos dans Apps Script
+        }
+    });
+    fetchOptions.body = body;
+
+    console.log("Envoi de la fiche d'observation à l'URL:", submitUrl.toString());
 
     try {
-        const callbackName = 'cbLogin' + Date.now();
-        if (!window.webAppUrl) {
-            console.error("LOGIN ERROR: window.webAppUrl n'est pas défini !");
-            if (message) message.textContent = "Erreur de configuration: URL de l'application manquante.";
-            return;
-        }
-        const url = `${window.webAppUrl}?type=loginpresta&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
-        console.log("LOGIN: URL d'API générée:", url);
-        const data = await callApiJsonp(url, callbackName);
-        console.log("LOGIN: Réponse de l'API de login:", data);
-        if (!data.success) {
-            if (message) message.textContent = data.message || "Connexion échouée.";
-            console.log("LOGIN: Connexion échouée. Message:", data.message);
-            return;
-        }
+        // Pour les requêtes POST avec FormData (y compris les fichiers), on utilise fetch standard
+        // et non JSONP, car JSONP ne supporte pas les requêtes POST avec corps.
+        // L'URL de déploiement doit être configurée pour accepter les requêtes POST.
+        const response = await fetch(window.webAppUrl, fetchOptions);
+        const data = await response.json(); // Assurez-vous que votre doPost renvoie du JSON
 
-        window.setPrestataireData(data.email, data.prenom, data.nom);
+        console.log("Réponse de l'API ficheobservation:", data);
 
-        window.show(form, false);
-        window.show(missionsBlock, true);
-        await loadMissions(window.currentEmail);
-        console.log("LOGIN: Missions chargées après connexion réussie.");
-    } catch (err) {
-        if (message) message.textContent = "Erreur serveur ou réseau.";
-        console.error("LOGIN ERROR: Erreur dans la fonction login():", err);
+        if (data.success) {
+            showMessage('Fiche d\'observation envoyée et mission clôturée !', 'success');
+            observationModal.remove(); // Ferme la modale
+            loadMissions(); // Recharge les missions pour voir le statut "terminée"
+        } else {
+            showMessage(data.message || 'Erreur lors de l\'envoi de la fiche.', 'error');
+            if (observationModal) observationModal.style.display = 'flex'; // Réaffiche la modale en cas d'erreur
+        }
+    } catch (error) {
+        console.error("Erreur lors de l'appel API ficheobservation:", error);
+        showMessage('Erreur de communication avec le serveur lors de l\'envoi de la fiche.', 'error');
+        if (observationModal) observationModal.style.display = 'flex'; // Réaffiche la modale en cas d'erreur
     } finally {
-        window.show(loader, false);
-        console.log("LOGIN: Fonction login() terminée.");
-    }
-};
-
-window.loadMissions = async function(emailToLoad) {
-    const contAttente = document.getElementById("missions-attente");
-    const contAvenir = document.getElementById("missions-a-venir");
-    const contTerminees = document.getElementById("missions-terminees");
-    if (!contAttente || !contAvenir || !contTerminees) {
-        console.warn("Conteneurs de missions non trouvés. Impossible de charger les missions.");
-        return;
-    }
-
-    contAttente.innerHTML = "Chargement...";
-    contAvenir.innerHTML = "Chargement...";
-    contTerminees.innerHTML = "Chargement...";
-
-    try {
-        const callbackName = 'cbMissions' + Date.now();
-        if (!window.webAppUrl) {
-            console.error("LOAD MISSIONS ERROR: window.webAppUrl n'est pas défini !");
-            alert("Erreur de configuration: URL de l'application manquante pour charger les missions.");
-            return;
-        }
-        const url = `${window.webAppUrl}?type=missionspresta&email=${encodeURIComponent(emailToLoad)}`;
-        console.log("LOAD MISSIONS: URL d'API générée:", url);
-        const data = await callApiJsonp(url, callbackName);
-        console.log("LOAD MISSIONS: Réponse de l'API des missions:", data);
-
-        if (!data.success || !Array.isArray(data.missions)) {
-            alert("Erreur lors du chargement des missions.");
-            console.warn("LOAD MISSIONS: Données de missions invalides ou échec.", data);
-            return;
-        }
-
-        const missions = data.missions;
-        const missionsAttente = missions.filter(m => m.statut === "en attente");
-        const missionsValidees = missions.filter(m => m.statut === "confirmée" || m.statut === "validée");
-        const missionsTerminees = missions.filter(m => m.statut === "terminée");
-
-        contAttente.innerHTML = renderTable(missionsAttente, 'attente');
-        contAvenir.innerHTML = renderTable(missionsValidees, 'validee');
-        contTerminees.innerHTML = renderTable(missionsTerminees, '');
-        console.log("LOAD MISSIONS: Tableaux de missions rendus avec succès.");
-    } catch (e) {
-        alert("Erreur serveur lors du chargement des missions.");
-        console.error("LOAD MISSIONS ERROR: Erreur dans loadMissions():", e);
+        loaderDiv.style.display = 'none';
     }
 }
 
-function renderTable(missions, type = "") {
-    if (!missions.length) return "<p>Aucune mission.</p>";
-    let html = `<table class="missions-table"><thead><tr><th>ID</th><th>Client</th><th>Adresse</th><th>Service</th><th>Date</th><th>Heure</th>`;
-    if (type) html += "<th>Actions</th>";
-    html += "</tr></thead><tbody>";
 
-    missions.forEach(m => {
-        const date = new Date(m.date).toLocaleDateString('fr-FR');
-        const heure = new Date(m.heure);
-        const formattedHeure = `${String(heure.getHours()).padStart(2, '0')}h${String(heure.getMinutes()).padStart(2, '0')}`;
-        html += `<tr>
-            <td data-label="ID">${m.id}</td>
-            <td data-label="Client">${m.client}</td>
-            <td data-label="Adresse">${m.adresse}</td>
-            <td data-label="Service">${m.service}</td>
-            <td data-label="Date">${date}</td>
-            <td data-label="Heure">${formattedHeure}</td>`;
-        if (type === "attente") {
-            html += `<td data-label="Actions" class="actions">
-            <button class="btn-action btn-validate" onclick="validerMission('${m.id}')">✅</button>
-            <button class="btn-action btn-refuse" onclick="refuserMission('${m.id}')">❌</button>
-            </td>`;
-        } else if (type === "validee") {
-            html += `<td data-label="Actions" class="actions"><button class="btn-action btn-start" onclick="openModalStartPrestation('${m.id}', '${m.clientPrenom}', '${m.clientNom}')">▶️</button></td>`;
-        }
-        html += "</tr>";
-    });
+// --- Initialisation ---
 
-    html += "</tbody></table>";
-    return html;
-}
-
-async function validerMission(id) {
-    if (!confirm("Confirmer la validation ?")) return;
-    const callbackName = 'cbValider' + Date.now();
-    const url = `${window.webAppUrl}?type=validerMission&id=${encodeURIComponent(id)}`;
-    await callApiJsonp(url, callbackName);
-    alert("Mission validée.");
-    if (window.currentEmail) await loadMissions(window.currentEmail);
-}
-
-async function refuserMission(id) {
-    const alt = prompt("Nouvelle date/heure ?");
-    if (!alt) return;
-    const callbackName = 'cbRefuser' + Date.now();
-    const url = `${window.webAppUrl}?type=refuserMission&id=${encodeURIComponent(id)}&alternatives=${encodeURIComponent(alt)}`;
-    await callApiJsonp(url, callbackName);
-    alert("Proposition envoyée.");
-    if (window.currentEmail) await loadMissions(window.currentEmail);
-}
-
-// Fonctions utilitaires génériques
-function clearForm(formElement) {
-    if (!formElement) return;
-    Array.from(formElement.elements).forEach(el => {
-        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-            el.value = '';
-        } else if (el.tagName === 'SELECT') {
-            el.selectedIndex = 0;
-        }
-    });
-    // Réinitialisation spécifique du champ de fichier et de la prévisualisation
-    const photosInput = formElement.querySelector("#photos");
-    if (photosInput) photosInput.value = "";
-    const photosPreview = formElement.querySelector("#photosPreview");
-    if (photosPreview) photosPreview.innerHTML = "";
-}
-
-
-function tempDisable(btn, ms = 1000) {
-    if (!btn) return;
-    btn.disabled = true;
-    setTimeout(() => {
-        btn.disabled = false;
-    }, ms);
-}
-
-function createElementFromHTML(htmlString) {
-    const div = document.createElement('div');
-    div.innerHTML = htmlString.trim();
-    return div.firstChild;
-}
-
-// Point d'entrée principal du script
+// Attendre que le DOM soit complètement chargé
 document.addEventListener('DOMContentLoaded', () => {
-    initializeLoginForm(); // Initialise le formulaire de connexion
+    console.log("DOM entièrement chargé.");
 
-    // Injecte le HTML de la modale dynamiquement via JavaScript
-    createAndInjectModalHtml();
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', login);
+        console.log("Écouteur du formulaire de connexion initialisé.");
+    } else {
+        console.error("Formulaire de connexion (loginForm) introuvable.");
+    }
 
-    // Attendre un court instant pour que le DOM soit mis à jour
-    // avant d'initialiser les écouteurs de la modale
-    setTimeout(() => {
-        initializeModalListeners();
-        console.log("initializeModalListeners appelée après injection et délai.");
-    }, 100); // 100ms est un bon point de départ, ajustez si nécessaire
+    // Vérifier si un prestataire est déjà connecté (par exemple, via un cookie ou localStorage si implémenté)
+    // Pour l'instant, on suppose qu'il faut toujours se connecter.
+    // Si vous avez une logique de session, c'est ici que vous la géreriez pour appeler loadMissions() directement.
 });
+
+// Initialiser les écouteurs de la modale d'observation après injection et délai
+// Cette fonction est appelée par openObservationModal()
+function initializeModalListeners() {
+    console.log("initializeModalListeners appelée après injection et délai.");
+    const closeButton = document.getElementById('closeObservationModal');
+    const observationForm = document.getElementById('observationForm');
+
+    if (closeButton) {
+        closeButton.addEventListener('click', () => {
+            document.getElementById('observationModal').remove();
+        });
+    }
+
+    if (observationForm) {
+        observationForm.addEventListener('submit', submitObservationForm);
+    }
+}
