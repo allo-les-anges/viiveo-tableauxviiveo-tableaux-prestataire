@@ -249,82 +249,125 @@ input[type="email"], input[type="password"] {
 /* === Style spécifique Modale Scan QR & fiche observation === */
 
 #modalOverlay {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.6);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-    padding: 10px;
-    overflow-y: auto;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.6);
+    display: none; /* Géré par JS */
+    justify-content: center;
+    align-items: center;
+    z-index: 2147483647 !important; /* Z-index maximal pour être sûr d'être au-dessus */
+    /* Retiré le padding et overflow-y car ils sont mieux sur modalContent */
+    border: 5px solid red !important; /* Bordure de débogage pour voir la modale */
 }
 #modalContent {
-    background: white;
-    border-radius: 10px;
-    padding: 20px;
-    width: 100%;
-    max-width: 480px; /* Conserver ou augmenter si vous voulez une modale plus large */
-    max-height: 180vh;
-    overflow-y: auto;
-    box-sizing: border-box;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    display: flex;
-    flex-direction: column;
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh; /* Utilisation de vh pour la hauteur de la fenêtre */
+    overflow-y: auto; /* Permet le défilement si le contenu est trop grand */
+    box-sizing: border-box;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    border: 5px solid green !important; /* Bordure de débogage pour voir le contenu */
+}
+
+#stepQR {
+    display: none; /* Géré par JS */
+    flex-direction: column; /* Ajouté pour correspondre au style inline précédent */
+    align-items: center; /* Ajouté pour correspondre au style inline précédent */
+    border: 2px solid orange !important; /* Bordure de débogage pour voir l'étape QR */
+    padding: 10px; /* Ajouté pour espacement interne */
+}
+
+#stepForm {
+    display: none; /* Géré par JS */
+    flex-direction: column; /* Ajouté pour correspondre au style inline précédent */
+    align-items: stretch; /* Ajouté pour correspondre au style inline précédent */
+    border: 2px solid purple !important; /* Bordure de débogage pour voir l'étape Form */
+    padding: 10px; /* Ajouté pour espacement interne */
+}
+
+#stepSuccess {
+    display: none; /* Géré par JS */
+    text-align: center; /* Ajouté pour correspondre au style inline précédent */
+    border: 2px solid blue !important; /* Bordure de débogage pour voir l'étape Success */
+    padding: 10px; /* Ajouté pour espacement interne */
 }
 
 #qr-reader {
-    width: 100% !important;
-    height: auto !important;
-    max-height: 350px;
-    margin: 0 auto;
+    width: 100% !important;
+    height: auto !important;
+    max-height: 350px;
+    margin: 0 auto;
+    border: 2px solid yellow !important; /* Bordure de débogage pour voir le conteneur du scanner */
+    background-color: #f0f0f0; /* Couleur de fond pour le conteneur du scanner */
 }
 
 #qr-reader video, #qr-reader canvas {
-    width: 100% !important;
-    height: auto !important;
-    object-fit: cover !important;
+    width: 100% !important;
+    height: auto !important;
+    object-fit: cover !important;
 }
 
-// ... Le reste de votre CSS reste inchangé
 /* Styles pour les labels et inputs/select/textarea à l'intérieur de la modale */
 #modalContent label {
     display: block;
     margin-top: 15px;
     font-weight: 600;
-    color: #333; /* Assurez-vous d'une couleur visible */
+    color: #333;
 }
 
 #modalContent input,
 #modalContent select,
 #modalContent textarea {
     width: 100%;
-    padding: 10px; /* Légèrement augmenté pour une meilleure touche */
+    padding: 10px;
     margin-top: 5px;
     box-sizing: border-box;
     border: 1.5px solid #ccc;
     border-radius: 6px;
-    font-size: 15px; /* Légèrement augmenté */
+    font-size: 15px;
 }
 
+/* Styles pour les boutons de la modale */
 #modalContent button {
-    margin-top: 20px;
     padding: 12px;
-    background-color: #B58F0A;
-    color: white;
     border: none;
     border-radius: 10px;
     cursor: pointer;
     font-weight: 700;
-    width: 100%;
+    width: 100%; /* Les boutons prennent toute la largeur par défaut */
+    margin-top: 20px; /* Marge pour tous les boutons */
 }
 #modalContent button:hover {
-    background-color: #9b7606;
+    opacity: 0.9; /* Effet hover générique */
 }
 
+/* Styles spécifiques pour les boutons Annuler */
 #btnCancelQR, #btnCancelForm {
-    background: #d32f2f !important;
-    margin-top: 10px !important;
+    background-color: #f44336 !important; /* Rouge */
+    color: white;
+    margin-top: 10px !important; /* Marge spécifique pour annuler */
 }
+
+/* Style spécifique pour le bouton Envoyer */
+#obsForm button[type="submit"] {
+    background-color: #4CAF50 !important; /* Vert */
+    color: white;
+}
+
+/* Style spécifique pour le bouton Fermer (succès) */
+#btnCloseSuccess {
+    background-color: #008CBA !important; /* Bleu */
+    color: white;
+}
+
 
 #photosPreview img {
     max-width: 80px;
@@ -491,7 +534,7 @@ footer .copyright {
     }
 
     /* Responsive général */
-    table { font-size: 14px; } /* Correction de la duplication */
-    .viiveo-missions { padding: 20px; } /* Correction de la duplication */
-    .viiveo-login { padding: 20px; } /* Correction de la duplication */
+    table { font-size: 14px; }
+    .viiveo-missions { padding: 20px; }
+    .viiveo-login { padding: 20px; }
 }
