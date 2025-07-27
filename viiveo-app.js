@@ -131,11 +131,23 @@ async function loadMissions() {
 
         if (data.success && data.missions) {
             console.log(`LOAD MISSIONS: ${data.missions.length} missions reçues.`);
-            renderMissions(data.missions);
+            // Utilisation de renderTable pour afficher les missions
+            const missions = data.missions;
+            const missionsAttente = missions.filter(m => m.statut === "en attente");
+            const missionsValidees = missions.filter(m => m.statut === "confirmée" || m.statut === "validée");
+            const missionsTerminees = missions.filter(m => m.statut === "terminée");
+
+            document.getElementById('missions-attente').innerHTML = renderTable(missionsAttente, 'attente');
+            document.getElementById('missions-a-venir').innerHTML = renderTable(missionsValidees, 'validee');
+            document.getElementById('missions-terminees').innerHTML = renderTable(missionsTerminees, '');
+
             console.log("LOAD MISSIONS: Tableaux de missions rendus avec succès.");
         } else {
             showMessage(data.message || 'Aucune mission trouvée.', 'info');
-            renderMissions([]); // Affiche des tableaux vides
+            // Si aucune mission, vider les conteneurs
+            document.getElementById('missions-attente').innerHTML = "<p>Aucune mission en attente.</p>";
+            document.getElementById('missions-a-venir').innerHTML = "<p>Aucune mission à venir.</p>";
+            document.getElementById('missions-terminees').innerHTML = "<p>Aucune mission terminée.</p>";
             console.log("LOAD MISSIONS: Aucune mission ou erreur dans la réponse.");
         }
     } catch (error) {
@@ -147,106 +159,93 @@ async function loadMissions() {
 }
 
 /**
- * Rend les missions dans les sections appropriées du DOM.
- * @param {Array<Object>} missions La liste des missions.
+ * Rend les missions dans une structure de tableau HTML.
+ * @param {Array<Object>} missions La liste des missions à rendre.
+ * @param {string} type Le type de missions ('attente', 'validee', '').
+ * @returns {string} Le HTML du tableau des missions.
  */
-function renderMissions(missions) {
-    console.log("RENDER MISSIONS: Début du rendu des missions.");
-    const missionsAttenteDiv = document.getElementById('missions-attente');
-    const missionsAVenirDiv = document.getElementById('missions-a-venir');
-    const missionsTermineesDiv = document.getElementById('missions-terminees');
+function renderTable(missions, type = "") {
+    if (!missions.length) return `<p>Aucune mission ${type ? `(${type})` : ''}.</p>`; // Message plus spécifique
 
-    if (!missionsAttenteDiv || !missionsAVenirDiv || !missionsTermineesDiv) {
-        console.error("RENDER MISSIONS: Un ou plusieurs conteneurs de missions sont introuvables dans le DOM.");
-        showMessage("Erreur d'affichage: Conteneurs de missions manquants.", "error");
-        return;
-    }
+    let html = `<table class="missions-table"><thead><tr><th>ID</th><th>Client</th><th>Adresse</th><th>Service</th><th>Date</th><th>Heure</th>`;
+    if (type) html += "<th>Actions</th>"; // Ajoute la colonne Actions si le type est spécifié
+    html += "</tr></thead><tbody>";
 
-    missionsAttenteDiv.innerHTML = '';
-    missionsAVenirDiv.innerHTML = '';
-    missionsTermineesDiv.innerHTML = '';
-    console.log("RENDER MISSIONS: Conteneurs de missions vidés.");
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Pour comparer uniquement la date
-
-    missions.forEach(mission => {
-        console.log("RENDER MISSIONS: Traitement de la mission:", mission); // Log complet de la mission
-        
-        let missionDate;
-        if (mission.date instanceof Date) {
-            missionDate = mission.date;
-        } else if (typeof mission.date === 'string') {
-            missionDate = new Date(mission.date);
-        } else {
-            console.warn(`RENDER MISSIONS: Date de mission invalide pour ID ${mission.id}:`, mission.date);
-            missionDate = new Date(); // Fallback
+    missions.forEach(m => {
+        const date = new Date(m.date).toLocaleDateString('fr-FR');
+        const heure = new Date(m.heure);
+        const formattedHeure = `${String(heure.getHours()).padStart(2, '0')}h${String(heure.getMinutes()).padStart(2, '0')}`;
+        html += `<tr>
+            <td data-label="ID">${m.id}</td>
+            <td data-label="Client">${m.client}</td>
+            <td data-label="Adresse">${m.adresse}</td>
+            <td data-label="Service">${m.service}</td>
+            <td data-label="Date">${date}</td>
+            <td data-label="Heure">${formattedHeure}</td>`;
+        if (type === "attente") {
+            html += `<td data-label="Actions" class="actions">
+            <button class="btn-action btn-validate" onclick="validerMission('${m.id}')">✅</button>
+            <button class="btn-action btn-refuse" onclick="refuserMission('${m.id}')">❌</button>
+            </td>`;
+        } else if (type === "validee") { // Pour les missions "confirmée" ou "validée"
+            html += `<td data-label="Actions" class="actions"><button class="btn-action btn-start" onclick="openModalStartPrestation('${m.id}', '${m.clientPrenom}', '${m.clientNom}')">▶️</button></td>`;
         }
-        missionDate.setHours(0, 0, 0, 0);
-
-        const missionElement = document.createElement('div');
-        missionElement.className = 'mission-card'; // Utilise la classe pour les styles CSS définis dans Embed 2
-        
-        // Déterminer le nom du client de manière robuste
-        const clientDisplayName = mission.client || (mission.clientPrenom && mission.clientNom ? `${mission.clientPrenom} ${mission.clientNom}` : 'Indéfini');
-
-        // Déterminer si le bouton scanner doit être affiché
-        const showScannerButton = ['confirmée', 'en cours'].includes(mission.statut);
-
-        missionElement.innerHTML = `
-            <p class="text-lg font-semibold">ID Mission: ${mission.id}</p>
-            <p>Client: ${clientDisplayName}</p>
-            <p>Service: ${mission.service}</p>
-            <p>Date: ${mission.date} à ${mission.heure}</p>
-            <p>Statut: <span class="font-bold ${mission.statut === 'confirmée' ? 'text-blue-600' : (mission.statut === 'en cours' ? 'text-orange-600' : 'text-green-600')}">${mission.statut}</span></p>
-            ${showScannerButton ? `
-            <button class="scan-qr-button mt-3 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-                    data-mission-id="${mission.id}"
-                    data-client-id="${mission.idClientQR || ''}"
-                    data-client-prenom="${mission.clientPrenom || ''}"
-                    data-client-nom="${mission.clientNom || ''}"
-                    data-heure-debut-reelle="${mission.heureDebutReelle || ''}"
-                    data-latitude-debut="${mission.latitudeDebut || ''}"
-                    data-longitude-debut="${mission.longitudeDebut || ''}">
-                Scanner QR
-            </button>
-            ` : ''}
-        `;
-
-        if (showScannerButton) {
-            const scanButton = missionElement.querySelector('.scan-qr-button');
-            scanButton.addEventListener('click', () => {
-                console.log(`RENDER MISSIONS: Bouton Scanner QR cliqué pour mission ${mission.id}`);
-                // Stocker les infos de la mission dans des variables globales temporaires avant le scan
-                window.currentMissionId = scanButton.dataset.missionId;
-                window.currentClientPrenom = scanButton.dataset.clientPrenom;
-                window.currentClientNom = scanButton.dataset.clientNom;
-                window.currentHeureDebutReelle = scanButton.dataset.heureDebutReelle;
-                window.currentLatitudeDebut = scanButton.dataset.latitudeDebut;
-                window.currentLongitudeDebut = scanButton.dataset.longitudeDebut;
-
-                startQrScanner(); // Démarrer le scanner
-            });
-        }
-
-        // Ajout du statut "en attente" pour l'affichage
-        if (mission.statut === 'confirmée') {
-            missionsAttenteDiv.appendChild(missionElement);
-            console.log(`RENDER MISSIONS: Mission ${mission.id} ajoutée à missions-attente.`);
-        } else if (mission.statut === 'en cours') {
-            missionsAVenirDiv.appendChild(missionElement);
-            console.log(`RENDER MISSIONS: Mission ${mission.id} ajoutée à missions-a-venir.`);
-        } else if (mission.statut === 'terminée') {
-            missionsTermineesDiv.appendChild(missionElement);
-            console.log(`RENDER MISSIONS: Mission ${mission.id} ajoutée à missions-terminees.`);
-        } else if (mission.statut === 'en attente') { // Ajout de la condition pour "en attente"
-            missionsAttenteDiv.appendChild(missionElement); // Ou une autre section si vous en avez une spécifique
-            console.log(`RENDER MISSIONS: Mission ${mission.id} (en attente) ajoutée à missions-attente.`);
-        } else {
-            console.warn(`RENDER MISSIONS: Statut de mission inconnu pour ID ${mission.id}: ${mission.statut}. Non affichée.`);
-        }
+        html += "</tr>";
     });
-    console.log("RENDER MISSIONS: Fin du rendu des missions.");
+
+    html += "</tbody></table>";
+    return html;
+}
+
+// Fonctions pour valider et refuser une mission (appelées par les boutons du tableau)
+async function validerMission(id) {
+    // Remplacer confirm() par une modale personnalisée si possible
+    if (!confirm("Confirmer la validation de la mission ?")) return;
+    const loaderDiv = document.querySelector('.viiveo-loader');
+    loaderDiv.style.display = 'block';
+    try {
+        const url = new URL(window.webAppUrl);
+        url.searchParams.append('type', 'validerMission');
+        url.searchParams.append('id', id);
+        const data = await callApiJsonp(url.toString(), 'validerCallback');
+        if (data.success) {
+            showMessage('Mission validée avec succès !', 'success');
+            await loadMissions(); // Recharger les missions
+        } else {
+            showMessage(data.message || 'Erreur lors de la validation.', 'error');
+        }
+    } catch (error) {
+        console.error("Erreur lors de la validation de mission:", error);
+        showMessage('Erreur de communication avec le serveur.', 'error');
+    } finally {
+        loaderDiv.style.display = 'none';
+    }
+}
+
+async function refuserMission(id) {
+    // Remplacer prompt() par une modale personnalisée si possible
+    const alternatives = prompt("Veuillez entrer une nouvelle date/heure ou des alternatives pour le refus :");
+    if (!alternatives) return;
+    const loaderDiv = document.querySelector('.viiveo-loader');
+    loaderDiv.style.display = 'block';
+    try {
+        const url = new URL(window.webAppUrl);
+        url.searchParams.append('type', 'refuserMission');
+        url.searchParams.append('id', id);
+        url.searchParams.append('alternatives', alternatives);
+        const data = await callApiJsonp(url.toString(), 'refuserCallback');
+        if (data.success) {
+            showMessage('Proposition d\'alternatives envoyée !', 'success');
+            await loadMissions(); // Recharger les missions
+        } else {
+            showMessage(data.message || 'Erreur lors du refus.', 'error');
+        }
+    } catch (error) {
+        console.error("Erreur lors du refus de mission:", error);
+        showMessage('Erreur de communication avec le serveur.', 'error');
+    } finally {
+        loaderDiv.style.display = 'none';
+    }
 }
 
 
