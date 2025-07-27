@@ -184,11 +184,11 @@ function renderTable(missions, type = "") {
             <td data-label="Heure">${formattedHeure}</td>`;
         if (type === "attente") {
             html += `<td data-label="Actions" class="actions">
-            <button class="btn-action btn-validate" onclick="validerMission('${m.id}')">✅</button>
-            <button class="btn-action btn-refuse" onclick="refuserMission('${m.id}')">❌</button>
+            <button class="btn-action btn-validate" onclick="window.validerMission('${m.id}')">✅</button>
+            <button class="btn-action btn-refuse" onclick="window.refuserMission('${m.id}')">❌</button>
             </td>`;
         } else if (type === "validee") { // Pour les missions "confirmée" ou "validée"
-            html += `<td data-label="Actions" class="actions"><button class="btn-action btn-start" onclick="openModalStartPrestation('${m.id}', '${m.clientPrenom}', '${m.clientNom}')">▶️</button></td>`;
+            html += `<td data-label="Actions" class="actions"><button class="btn-action btn-start" onclick="window.openModalStartPrestation('${m.id}', '${m.clientPrenom}', '${m.clientNom}')">▶️</button></td>`;
         }
         html += "</tr>";
     });
@@ -556,7 +556,7 @@ async function submitObservationForm(event) {
         }
     } catch (error) {
         console.error("Erreur lors de l'appel API ficheobservation:", error);
-        showMessage('Erreur de communication avec le serveur lors de l\'envoi de la fiche.', 'error');
+        showMessage('Erreur de communication avec le serveur.', 'error');
         if (observationModal) observationModal.style.display = 'flex'; // Réaffiche la modale en cas d'erreur
     } finally {
         loaderDiv.style.display = 'none';
@@ -586,6 +586,10 @@ window.onload = () => {
 // mais la rendre globale peut aider à la déboguer ou si d'autres parties du code l'appellent.
 window.login = login; // Rend la fonction login accessible globalement
 window.loadMissions = loadMissions; // Rend loadMissions accessible globalement
+window.openModalStartPrestation = openModalStartPrestation; // Rend la fonction openModalStartPrestation accessible globalement
+window.validerMission = validerMission; // Rend la fonction validerMission accessible globalement
+window.refuserMission = refuserMission; // Rend la fonction refuserMission accessible globalement
+
 
 // Fonctions utilitaires génériques (déplacées ici pour éviter les conflits de portée)
 function show(element, isVisible) {
