@@ -1,14 +1,15 @@
 // viiveo-app.js - À placer sur GitHub
 
+console.log("viiveo-app.js: Script chargé et début de l'exécution."); // Log très précoce pour le débogage
+
 // --- Variables Globales ---
-// Ces variables sont définies dans Embed 1, mais sont répétées ici pour clarté
-// Assurez-vous qu'elles ne sont pas redéclarées avec 'let' ou 'const' si elles le sont déjà dans Embed 1
+// Ces variables sont définies dans Embed 1 de Carrd.co.
 // window.webAppUrl = "https://script.google.com/macros/s/AKfycbzEEZZnZJK1BEXlCk81ogi0Aa7MFGunOkjS5s2CCDIZPSkHq0OtPAcEBLrkXp-fpb8aaQ/exec";
 // window.currentEmail = null;
 // window.currentPrenom = null;
 // window.currentNom = null;
 
-// Nouvelles variables globales pour le workflow de la mission
+// Variables globales pour le workflow de la mission
 let currentMissionId = null;
 let currentClientPrenom = null;
 let currentClientNom = null;
@@ -19,6 +20,41 @@ let currentLongitudeDebut = null;
 let qrScannerInstance = null; // Variable pour stocker l'instance du scanner QR
 
 // --- Fonctions Utilitaires ---
+
+/**
+ * Fonction générique pour appeler l'API Apps Script via JSONP.
+ * @param {string} url L'URL complète de l'API Apps Script.
+ * @param {string} callbackName Le nom de la fonction de callback JSONP.
+ * @returns {Promise<Object>} Une promesse qui se résout avec les données de la réponse de l'API.
+ */
+function callApiJsonp(url, callbackName) {
+    return new Promise((resolve, reject) => {
+        // Crée un élément script pour la requête JSONP
+        const script = document.createElement('script');
+        script.src = `${url}&callback=${callbackName}`;
+        document.body.appendChild(script);
+
+        // Définit la fonction de callback globale
+        window[callbackName] = (data) => {
+            console.log(`JSONP Callback ${callbackName} reçu:`, data);
+            resolve(data);
+            // Nettoie l'élément script et la fonction de callback globale après utilisation
+            document.body.removeChild(script);
+            delete window[callbackName];
+        };
+
+        script.onerror = (error) => {
+            console.error(`Erreur de chargement du script JSONP pour ${url}:`, error);
+            reject(new Error(`Erreur réseau ou de chargement pour l'API: ${url}`));
+            // Nettoie en cas d'erreur
+            document.body.removeChild(script);
+            delete window[callbackName];
+        };
+
+        console.log(`JSONP: Requête lancée pour ${url} avec callback ${callbackName}`);
+    });
+}
+
 
 /**
  * Affiche un message à l'utilisateur.
@@ -41,7 +77,7 @@ function showMessage(message, type) {
 /**
  * Gère la connexion du prestataire.
  */
-async function login() {
+window.login = async function() { // Rendre la fonction login globale
     console.log("LOGIN: Fonction login() appelée.");
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
@@ -86,7 +122,7 @@ async function login() {
             loginDiv.style.display = 'none';
             missionsDiv.style.display = 'block';
             console.log("LOGIN: Missions chargées après connexion réussie.");
-            await loadMissions(); // Appel direct de loadMissions après la connexion réussie
+            await window.loadMissions(); // Appel direct de loadMissions après la connexion réussie
         } else {
             showMessage(data.message || 'Erreur de connexion.', 'error');
             loginDiv.style.display = 'block'; // Réaffiche le formulaire de login
@@ -99,19 +135,18 @@ async function login() {
         loaderDiv.style.display = 'none';
         console.log("LOGIN: Fonction login() terminée.");
     }
-}
+};
 
 /**
  * Charge les missions pour le prestataire connecté.
  */
-async function loadMissions() {
+window.loadMissions = async function() { // Rendre la fonction loadMissions globale
     console.log("LOAD MISSIONS: Fonction loadMissions() appelée.");
     if (!window.currentEmail) {
         console.log("LOAD MISSIONS: Pas d'email prestataire (window.currentEmail est null ou vide), ne charge pas les missions.");
         return;
     }
     console.log(`LOAD MISSIONS: Chargement des missions pour ${window.currentEmail}`);
-
 
     const loaderDiv = document.querySelector('.viiveo-loader');
     loaderDiv.style.display = 'block';
@@ -128,7 +163,6 @@ async function loadMissions() {
 
         if (data.success && data.missions) {
             console.log(`LOAD MISSIONS: ${data.missions.length} missions reçues.`);
-            // Utilisation de renderTable pour afficher les missions
             const missions = data.missions;
             const missionsAttente = missions.filter(m => m.statut === "en attente");
             const missionsValidees = missions.filter(m => m.statut === "confirmée" || m.statut === "validée");
@@ -141,7 +175,6 @@ async function loadMissions() {
             console.log("LOAD MISSIONS: Tableaux de missions rendus avec succès.");
         } else {
             showMessage(data.message || 'Aucune mission trouvée.', 'info');
-            // Si aucune mission, vider les conteneurs
             document.getElementById('missions-attente').innerHTML = "<p>Aucune mission en attente.</p>";
             document.getElementById('missions-a-venir').innerHTML = "<p>Aucune mission à venir.</p>";
             document.getElementById('missions-terminees').innerHTML = "<p>Aucune mission terminée.</p>";
@@ -153,7 +186,7 @@ async function loadMissions() {
     } finally {
         loaderDiv.style.display = 'none';
     }
-}
+};
 
 /**
  * Rend les missions dans une structure de tableau HTML.
@@ -162,10 +195,10 @@ async function loadMissions() {
  * @returns {string} Le HTML du tableau des missions.
  */
 function renderTable(missions, type = "") {
-    if (!missions.length) return `<p>Aucune mission ${type ? `(${type})` : ''}.</p>`; // Message plus spécifique
+    if (!missions.length) return `<p>Aucune mission ${type ? `(${type})` : ''}.</p>`;
 
     let html = `<table class="missions-table"><thead><tr><th>ID</th><th>Client</th><th>Adresse</th><th>Service</th><th>Date</th><th>Heure</th>`;
-    if (type) html += "<th>Actions</th>"; // Ajoute la colonne Actions si le type est spécifié
+    if (type) html += "<th>Actions</th>";
     html += "</tr></thead><tbody>";
 
     missions.forEach(m => {
@@ -194,8 +227,8 @@ function renderTable(missions, type = "") {
     return html;
 }
 
-// Fonctions pour valider et refuser une mission (appelées par les boutons du tableau)
-async function validerMission(id) {
+// Fonctions pour valider et refuser une mission (rendues globales)
+window.validerMission = async function(id) {
     // Remplacer confirm() par une modale personnalisée si possible
     if (!confirm("Confirmer la validation de la mission ?")) return;
     const loaderDiv = document.querySelector('.viiveo-loader');
@@ -207,7 +240,7 @@ async function validerMission(id) {
         const data = await callApiJsonp(url.toString(), 'validerCallback');
         if (data.success) {
             showMessage('Mission validée avec succès !', 'success');
-            await loadMissions(); // Recharger les missions
+            await window.loadMissions(); // Recharger les missions
         } else {
             showMessage(data.message || 'Erreur lors de la validation.', 'error');
         }
@@ -217,9 +250,9 @@ async function validerMission(id) {
     } finally {
         loaderDiv.style.display = 'none';
     }
-}
+};
 
-async function refuserMission(id) {
+window.refuserMission = async function(id) {
     // Remplacer prompt() par une modale personnalisée si possible
     const alternatives = prompt("Veuillez entrer une nouvelle date/heure ou des alternatives pour le refus :");
     if (!alternatives) return;
@@ -233,7 +266,7 @@ async function refuserMission(id) {
         const data = await callApiJsonp(url.toString(), 'refuserCallback');
         if (data.success) {
             showMessage('Proposition d\'alternatives envoyée !', 'success');
-            await loadMissions(); // Recharger les missions
+            await window.loadMissions(); // Recharger les missions
         } else {
             showMessage(data.message || 'Erreur lors du refus.', 'error');
         }
@@ -243,7 +276,8 @@ async function refuserMission(id) {
     } finally {
         loaderDiv.style.display = 'none';
     }
-}
+};
+
 
 // --- Fonctions du Scanner QR ---
 
@@ -293,7 +327,7 @@ function startQrScanner() {
 
     // Écouteur pour fermer la modale
     scannerModal.querySelector('#closeScannerModal').addEventListener('click', () => {
-        if (qrScannerInstance && qrScannerInstance.isScanning) {
+        if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
              qrScannerInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
         }
         scannerModal.remove();
@@ -309,7 +343,7 @@ async function handleScanResult(qrData) {
     console.log("QR Code détecté:", qrData);
     const scannerModal = document.getElementById('scannerModal'); // Récupère la modale du scanner
 
-    if (qrScannerInstance && qrScannerInstance.isScanning) {
+    if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
         await qrScannerInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
         console.log("Scanner arrêté après détection réussie.");
     }
@@ -366,7 +400,7 @@ async function handleScanResult(qrData) {
                         if (data.missionStatus === 'started') {
                             // Mission vient d'être démarrée (premier scan)
                             console.log("Mission démarrée, rechargement des missions...");
-                            await loadMissions(); // Recharger les missions pour mettre à jour l'affichage
+                            await window.loadMissions(); // Recharger les missions pour mettre à jour l'affichage
                         } else if (data.missionStatus === 'readyForEnd') {
                             // Mission est en cours, prête pour la fin (deuxième scan)
                             console.log("Mission en cours, ouverture de la modale d'observation...");
@@ -378,12 +412,12 @@ async function handleScanResult(qrData) {
                             window.currentLatitudeDebut = data.mission.latitude; // Récupère la latitude de début
                             window.currentLongitudeDebut = data.mission.longitude; // Récupère la longitude de début
 
-                            openObservationModal(); // Ouvrir la modale de fiche d'observation
+                            window.openObservationModal(); // Ouvrir la modale de fiche d'observation
                         } else if (data.missionStatus === 'completed') {
                             // Mission déjà terminée
                             showMessage(data.message, 'info');
                             console.log("Mission déjà terminée, rechargement des missions...");
-                            await loadMissions(); // Rafraîchir au cas où
+                            await window.loadMissions(); // Rafraîchir au cas où
                         }
                     } else {
                         showMessage(data.message, 'error');
@@ -409,7 +443,7 @@ async function handleScanResult(qrData) {
 /**
  * Ouvre la modale pour la fiche d'observation.
  */
-function openObservationModal() {
+window.openObservationModal = function() { // Rendre la fonction globale
     console.log("Ouverture de la modale d'observation...");
     const modalHtml = `
         <div id="observationModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 p-4">
@@ -417,8 +451,8 @@ function openObservationModal() {
                 <h2 class="text-2xl font-bold mb-4 text-center">Fiche d'Observation</h2>
                 <button id="closeObservationModal" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
                 
-                <p class="mb-2"><strong>Mission ID:</strong> <span id="modalMissionId">${window.currentMissionId || 'N/A'}</span></p>
-                <p class="mb-4"><strong>Client:</strong> <span id="modalClientName">${window.currentClientPrenom || ''} ${window.currentClientNom || ''}</span></p>
+                <p class="mb-2"><strong>Mission ID:</strong> <span id="modalMissionId">${currentMissionId || 'N/A'}</span></p>
+                <p class="mb-4"><strong>Client:</strong> <span id="modalClientName">${currentClientPrenom || ''} ${currentClientNom || ''}</span></p>
                 
                 <form id="observationForm" class="space-y-4">
                     <div>
@@ -464,47 +498,18 @@ function openObservationModal() {
     closeButton.addEventListener('click', () => {
         observationModal.remove();
         // Optionnel: Réinitialiser les variables globales de la mission si la modale est fermée sans soumission
-        window.currentMissionId = null;
-        window.currentClientPrenom = null;
-        window.currentClientNom = null;
-        window.currentHeureDebutReelle = null;
-        window.currentLatitudeDebut = null;
-        window.currentLongitudeDebut = null;
+        currentMissionId = null;
+        currentClientPrenom = null;
+        currentClientNom = null;
+        currentHeureDebutReelle = null;
+        currentLatitudeDebut = null;
+        currentLongitudeDebut = null;
         console.log("Modale d'observation fermée manuellement.");
     });
 
     observationForm.addEventListener('submit', submitObservationForm);
     console.log("Écouteurs de la modale d'observation initialisés.");
-
-    // Photos preview listener - Vérifiez si les éléments de prévisualisation existent
-    const photosInput = document.getElementById('photos');
-    const photosPreview = document.getElementById('photosPreview');
-    if (photosInput && photosPreview) {
-        photosInput.addEventListener("change", e => {
-            photosPreview.innerHTML = "";
-            const files = e.target.files;
-            if (files.length > 3) {
-                alert("Vous ne pouvez sélectionner que 3 photos max."); // Utilisez une modale personnalisée si possible
-                photosInput.value = "";
-                return;
-            }
-            Array.from(files).forEach(file => {
-                const reader = new FileReader();
-                reader.onload = ev => {
-                    const img = document.createElement("img");
-                    img.src = ev.target.result;
-                    img.style.maxWidth = "100px"; // Style pour la prévisualisation
-                    img.style.maxHeight = "100px";
-                    img.style.margin = "5px";
-                    photosPreview.appendChild(img);
-                };
-                reader.readAsDataURL(file);
-            });
-        });
-    } else {
-        console.warn("Éléments de prévisualisation des photos (photosInput ou photosPreview) manquants.");
-    }
-}
+};
 
 /**
  * Gère la soumission du formulaire de fiche d'observation.
@@ -526,12 +531,12 @@ async function submitObservationForm(event) {
     submitUrl.searchParams.append('type', 'ficheobservation'); // Type pour l'API Apps Script
 
     // Ajouter les données de la mission et du prestataire
-    submitUrl.searchParams.append('missionId', window.currentMissionId);
-    submitUrl.searchParams.append('prenomClient', window.currentClientPrenom);
-    submitUrl.searchParams.append('nomClient', window.currentClientNom);
-    submitUrl.searchParams.append('heureDebut', window.currentHeureDebutReelle); // Heure de début réelle stockée
-    submitUrl.searchParams.append('latitude', window.currentLatitudeDebut); // Latitude de début réelle stockée
-    submitUrl.searchParams.append('longitude', window.currentLongitudeDebut); // Longitude de début réelle stockée
+    submitUrl.searchParams.append('missionId', currentMissionId);
+    submitUrl.searchParams.append('prenomClient', currentClientPrenom);
+    submitUrl.searchParams.append('nomClient', currentClientNom);
+    submitUrl.searchParams.append('heureDebut', currentHeureDebutReelle); // Heure de début réelle stockée
+    submitUrl.searchParams.append('latitude', currentLatitudeDebut); // Latitude de début réelle stockée
+    submitUrl.searchParams.append('longitude', currentLongitudeDebut); // Longitude de début réelle stockée
     submitUrl.searchParams.append('prestatairePrenom', window.currentPrenom);
     submitUrl.searchParams.append('prestataireNom', window.currentNom);
     submitUrl.searchParams.append('prestataireEmail', window.currentEmail);
@@ -572,21 +577,38 @@ async function submitObservationForm(event) {
         if (data.success) {
             showMessage('Fiche d\'observation envoyée et mission clôturée !', 'success');
             if (observationModal) observationModal.remove(); // Ferme la modale
-            await loadMissions(); // Recharge les missions pour voir le statut "terminée"
+            await window.loadMissions(); // Recharge les missions pour voir le statut "terminée"
         } else {
             showMessage(data.message || 'Erreur lors de l\'envoi de la fiche.', 'error');
             if (observationModal) observationModal.style.display = 'flex'; // Réaffiche la modale en cas d'erreur
         }
     } catch (error) {
         console.error("Erreur lors de l'appel API ficheobservation:", error);
-        showMessage('Erreur de communication avec le serveur.', 'error');
+        showMessage('Erreur de communication avec le serveur lors de l\'envoi de la fiche.', 'error');
         if (observationModal) observationModal.style.display = 'flex'; // Réaffiche la modale en cas d'erreur
     } finally {
         loaderDiv.style.display = 'none';
     }
 }
 
-// --- Fonctions utilitaires génériques ---
+
+// --- Initialisation ---
+
+// Point d'entrée principal du script
+// Utilisez window.onload pour vous assurer que tout le DOM est complètement chargé
+// avant d'initialiser les écouteurs et d'injecter du HTML.
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOMContentLoaded déclenché. Initialisation de l'application...");
+
+    // Injecte le HTML de la modale dynamiquement via JavaScript
+    createAndInjectModalHtml();
+
+    // Initialise les écouteurs du formulaire de connexion et de la modale
+    initializeLoginForm();
+    initializeModalListeners(); // Appelé directement car le HTML de la modale est maintenant injecté
+});
+
+// Fonctions utilitaires génériques (déplacées ici pour éviter les conflits de portée)
 function show(element, isVisible) {
     if (element) {
         element.style.display = isVisible ? 'block' : 'none';
@@ -622,25 +644,14 @@ function createElementFromHTML(htmlString) {
     return div.firstChild;
 }
 
-// --- Rendre les fonctions globales (déplacé ici pour une disponibilité précoce) ---
-window.login = login;
-window.loadMissions = loadMissions;
-window.openModalStartPrestation = openModalStartPrestation;
-window.validerMission = validerMission;
-window.refuserMission = refuserMission;
-window.show = show;
-
-
-// --- Initialisation ---
-
 // Nouvelle fonction pour initialiser les écouteurs de la modale d'observation
 function initializeModalListeners() {
     const observationModal = document.getElementById('observationModal');
     const closeButton = document.getElementById('closeObservationModal');
     const observationForm = document.getElementById('observationForm');
     const obsDateInput = document.getElementById('obsDate');
-    const photosInput = document.getElementById('photos'); // Déclaré ici pour être sûr
-    const photosPreview = document.getElementById('photosPreview'); // Déclaré ici pour être sûr
+    const photosInput = document.getElementById('photos');
+    const photosPreview = document.getElementById('photosPreview');
 
     if (!observationModal || !closeButton || !observationForm || !obsDateInput) {
         console.warn("Certains éléments de la modale d'observation sont manquants. Retrying initialization...");
@@ -654,12 +665,12 @@ function initializeModalListeners() {
 
     closeButton.addEventListener('click', () => {
         observationModal.remove();
-        window.currentMissionId = null;
-        window.currentClientPrenom = null;
-        window.currentClientNom = null;
-        window.currentHeureDebutReelle = null;
-        window.currentLatitudeDebut = null;
-        window.currentLongitudeDebut = null;
+        currentMissionId = null;
+        currentClientPrenom = null;
+        currentClientNom = null;
+        currentHeureDebutReelle = null;
+        currentLatitudeDebut = null;
+        currentLongitudeDebut = null;
         console.log("Modale d'observation fermée manuellement.");
     });
 
@@ -698,7 +709,7 @@ function initializeModalListeners() {
 function initializeLoginForm() {
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
-        loginForm.addEventListener('submit', window.login); // Utilise window.login
+        loginForm.addEventListener('submit', window.login);
         console.log("Écouteur du formulaire de connexion initialisé pour submit.");
     } else {
         console.error("Formulaire de connexion (loginForm) introuvable. Vérifiez l'ID dans Embed 2.");
@@ -713,8 +724,8 @@ function createAndInjectModalHtml() {
                 <h2 class="text-2xl font-bold mb-4 text-center">Fiche d'Observation</h2>
                 <button id="closeObservationModal" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
                 
-                <p class="mb-2"><strong>Mission ID:</strong> <span id="modalMissionId">${window.currentMissionId || 'N/A'}</span></p>
-                <p class="mb-4"><strong>Client:</strong> <span id="modalClientName">${window.currentClientPrenom || ''} ${window.currentClientNom || ''}</span></p>
+                <p class="mb-2"><strong>Mission ID:</strong> <span id="modalMissionId">${currentMissionId || 'N/A'}</span></p>
+                <p class="mb-4"><strong>Client:</strong> <span id="modalClientName">${currentClientPrenom || ''} ${currentClientNom || ''}</span></p>
                 
                 <form id="observationForm" class="space-y-4">
                     <div>
@@ -748,18 +759,3 @@ function createAndInjectModalHtml() {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     console.log("Modal HTML injected dynamically via JS.");
 }
-
-// Point d'entrée principal du script
-document.addEventListener('DOMContentLoaded', () => {
-    initializeLoginForm(); // Initialise le formulaire de connexion
-
-    // Injecte le HTML de la modale dynamiquement via JavaScript
-    createAndInjectModalHtml();
-
-    // Attendre un court instant pour que le DOM soit mis à jour
-    // avant d'initialiser les écouteurs de la modale
-    setTimeout(() => {
-        initializeModalListeners();
-        console.log("initializeModalListeners appelée après injection et délai.");
-    }, 100); // 100ms est un bon point de départ, ajustez si nécessaire
-});
