@@ -1,5 +1,4 @@
-// viiveo-app.js
-console.log("viiveo-app.js chargé et en cours d'exécution."); // Log ajouté tout en haut
+// viiveo-app.js - À placer sur GitHub
 
 // --- Variables Globales ---
 // Ces variables sont définies dans Embed 1, mais sont répétées ici pour clarté
@@ -10,14 +9,14 @@ console.log("viiveo-app.js chargé et en cours d'exécution."); // Log ajouté t
 // window.currentNom = null;
 
 // Nouvelles variables globales pour le workflow de la mission
-window.currentMissionId = null;
-window.currentClientPrenom = null;
-window.currentClientNom = null;
-window.currentHeureDebutReelle = null; // Stocke l'heure de début réelle de la mission (ISO string)
-window.currentLatitudeDebut = null;
-window.currentLongitudeDebut = null;
+let currentMissionId = null;
+let currentClientPrenom = null;
+let currentClientNom = null;
+let currentHeureDebutReelle = null; // Stocke l'heure de début réelle de la mission (ISO string)
+let currentLatitudeDebut = null;
+let currentLongitudeDebut = null;
 
-let html5QrCodeScanner = null; // Variable pour stocker l'instance du scanner QR
+let qrScannerInstance = null; // Variable pour stocker l'instance du scanner QR
 
 // --- Fonctions Utilitaires ---
 
@@ -39,13 +38,11 @@ function showMessage(message, type) {
     }
 }
 
-// --- Fonctions de Connexion et Chargement des Missions ---
-
 /**
  * Gère la connexion du prestataire.
  */
 async function login() {
-    console.log("LOGIN: Fonction login() appelée."); // Ce log devrait apparaître au clic sur le bouton
+    console.log("LOGIN: Fonction login() appelée.");
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const messageDiv = document.getElementById('message');
@@ -248,7 +245,6 @@ async function refuserMission(id) {
     }
 }
 
-
 // --- Fonctions du Scanner QR ---
 
 /**
@@ -271,8 +267,8 @@ function startQrScanner() {
 
     const html5QrCodeRegion = scannerModal.querySelector('#qr-code-reader');
 
-    html5QrCodeScanner = new Html5Qrcode("qr-code-reader"); // Initialise le scanner sur l'élément créé dans la modale
-    html5QrCodeScanner.start(
+    qrScannerInstance = new Html5Qrcode("qr-code-reader"); // Initialise le scanner sur l'élément créé dans la modale
+    qrScannerInstance.start(
         { facingMode: "environment" }, // Utilise la caméra arrière
         {
             fps: 10,    // Nombre d'images par seconde pour le scan
@@ -297,8 +293,8 @@ function startQrScanner() {
 
     // Écouteur pour fermer la modale
     scannerModal.querySelector('#closeScannerModal').addEventListener('click', () => {
-        if (html5QrCodeScanner && html5QrCodeScanner.isScanning) { // Correction: isScanning est la bonne propriété
-             html5QrCodeScanner.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
+        if (qrScannerInstance && qrScannerInstance.isScanning) {
+             qrScannerInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
         }
         scannerModal.remove();
         console.log("Scanner QR arrêté et modale fermée manuellement.");
@@ -313,8 +309,8 @@ async function handleScanResult(qrData) {
     console.log("QR Code détecté:", qrData);
     const scannerModal = document.getElementById('scannerModal'); // Récupère la modale du scanner
 
-    if (html5QrCodeScanner && html5QrCodeScanner.isScanning) {
-        await html5QrCodeScanner.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
+    if (qrScannerInstance && qrScannerInstance.isScanning) {
+        await qrScannerInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
         console.log("Scanner arrêté après détection réussie.");
     }
     if (scannerModal) {
@@ -325,8 +321,6 @@ async function handleScanResult(qrData) {
     // Extraire les paramètres de l'URL du QR code
     const url = new URL(qrData);
     const idClientQR = url.searchParams.get('idclient') || url.searchParams.get('clientId');
-    // L'email du prestataire peut aussi être dans le QR, mais nous utilisons window.currentEmail pour la cohérence
-    // const emailFromQR = url.searchParams.get('email');
 
     if (!idClientQR) {
         showMessage('Erreur: ID client non trouvé dans le QR code.', 'error');
@@ -481,6 +475,35 @@ function openObservationModal() {
 
     observationForm.addEventListener('submit', submitObservationForm);
     console.log("Écouteurs de la modale d'observation initialisés.");
+
+    // Photos preview listener - Vérifiez si les éléments de prévisualisation existent
+    const photosInput = document.getElementById('photos');
+    const photosPreview = document.getElementById('photosPreview');
+    if (photosInput && photosPreview) {
+        photosInput.addEventListener("change", e => {
+            photosPreview.innerHTML = "";
+            const files = e.target.files;
+            if (files.length > 3) {
+                alert("Vous ne pouvez sélectionner que 3 photos max."); // Utilisez une modale personnalisée si possible
+                photosInput.value = "";
+                return;
+            }
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    const img = document.createElement("img");
+                    img.src = ev.target.result;
+                    img.style.maxWidth = "100px"; // Style pour la prévisualisation
+                    img.style.maxHeight = "100px";
+                    img.style.margin = "5px";
+                    photosPreview.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+    } else {
+        console.warn("Éléments de prévisualisation des photos (photosInput ou photosPreview) manquants.");
+    }
 }
 
 /**
@@ -563,35 +586,7 @@ async function submitObservationForm(event) {
     }
 }
 
-
-// --- Initialisation ---
-
-// Point d'entrée principal du script
-// Utilisez window.onload pour vous assurer que tout le DOM est complètement chargé
-// avant d'initialiser les écouteurs et d'injecter du HTML.
-window.onload = () => {
-    console.log("window.onload déclenché. Initialisation de l'application...");
-
-    // Injecte le HTML de la modale dynamiquement via JavaScript
-    createAndInjectModalHtml();
-
-    // Initialise les écouteurs du formulaire de connexion et de la modale
-    initializeLoginForm();
-    initializeModalListeners(); // Appelé directement car le HTML de la modale est maintenant injecté
-};
-
-// La fonction initializeLoginForm doit être globale pour être accessible depuis le HTML de Carrd.co
-// si le bouton de soumission du formulaire de connexion utilise un attribut onclick="login()".
-// Cependant, comme nous attachons l'écouteur via JS, ce n'est pas strictement nécessaire,
-// mais la rendre globale peut aider à la déboguer ou si d'autres parties du code l'appellent.
-window.login = login; // Rend la fonction login accessible globalement
-window.loadMissions = loadMissions; // Rend loadMissions accessible globalement
-window.openModalStartPrestation = openModalStartPrestation; // Rend la fonction openModalStartPrestation accessible globalement
-window.validerMission = validerMission; // Rend la fonction validerMission accessible globalement
-window.refuserMission = refuserMission; // Rend la fonction refuserMission accessible globalement
-
-
-// Fonctions utilitaires génériques (déplacées ici pour éviter les conflits de portée)
+// --- Fonctions utilitaires génériques ---
 function show(element, isVisible) {
     if (element) {
         element.style.display = isVisible ? 'block' : 'none';
@@ -627,49 +622,16 @@ function createElementFromHTML(htmlString) {
     return div.firstChild;
 }
 
-// Fonction pour créer et injecter le HTML de la modale dynamiquement
-function createAndInjectModalHtml() {
-    const modalHtml = `
-        <div id="observationModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 p-4">
-            <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md relative overflow-y-auto max-h-[90vh]">
-                <h2 class="text-2xl font-bold mb-4 text-center">Fiche d'Observation</h2>
-                <button id="closeObservationModal" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
-                
-                <p class="mb-2"><strong>Mission ID:</strong> <span id="modalMissionId">${window.currentMissionId || 'N/A'}</span></p>
-                <p class="mb-4"><strong>Client:</strong> <span id="modalClientName">${window.currentClientPrenom || ''} ${window.currentClientNom || ''}</span></p>
-                
-                <form id="observationForm" class="space-y-4">
-                    <div>
-                        <label for="obsDate" class="block text-sm font-medium text-gray-700">Date d'Observation:</label>
-                        <input type="date" id="obsDate" name="obsDate" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required>
-                    </div>
-                    <div>
-                        <label for="etatSante" class="block text-sm font-medium text-gray-700">État de Santé:</label>
-                        <textarea id="etatSante" name="etatSante" rows="4" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" placeholder="Décrivez l'état de santé du client..." required></textarea>
-                    </div>
-                    <div>
-                        <label for="etatForme" class="block text-sm font-medium text-gray-700">État de Forme:</label>
-                        <input type="text" id="etatForme" name="etatForme" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" placeholder="Ex: Bonne, Fatigué..." required>
-                    </div>
-                    <div>
-                        <label for="environnement" class="block text-sm font-medium text-gray-700">Environnement:</label>
-                        <textarea id="environnement" name="environnement" rows="4" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" placeholder="Décrivez l'environnement de la mission..." required></textarea>
-                    </div>
-                    <div>
-                        <label for="photos" class="block text-sm font-medium text-gray-700">Photos (optionnel):</label>
-                        <input type="file" id="photos" name="photos" accept="image/*" multiple class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                    </div>
-                    
-                    <button type="submit" class="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50">
-                        Clôturer la Mission et Envoyer la Fiche
-                    </button>
-                </form>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    console.log("Modal HTML injected dynamically via JS.");
-}
+// --- Rendre les fonctions globales (déplacé ici pour une disponibilité précoce) ---
+window.login = login;
+window.loadMissions = loadMissions;
+window.openModalStartPrestation = openModalStartPrestation;
+window.validerMission = validerMission;
+window.refuserMission = refuserMission;
+window.show = show;
+
+
+// --- Initialisation ---
 
 // Nouvelle fonction pour initialiser les écouteurs de la modale d'observation
 function initializeModalListeners() {
@@ -677,12 +639,10 @@ function initializeModalListeners() {
     const closeButton = document.getElementById('closeObservationModal');
     const observationForm = document.getElementById('observationForm');
     const obsDateInput = document.getElementById('obsDate');
-    const photosInput = document.getElementById('photos');
-    const photosPreview = document.getElementById('photosPreview');
+    const photosInput = document.getElementById('photos'); // Déclaré ici pour être sûr
+    const photosPreview = document.getElementById('photosPreview'); // Déclaré ici pour être sûr
 
     if (!observationModal || !closeButton || !observationForm || !obsDateInput) {
-        // Si ces éléments de base ne sont pas là, la modale n'est pas encore prête.
-        // On peut retenter l'initialisation après un court délai.
         console.warn("Certains éléments de la modale d'observation sont manquants. Retrying initialization...");
         setTimeout(initializeModalListeners, 100); // Retry after 100ms
         return;
@@ -738,9 +698,68 @@ function initializeModalListeners() {
 function initializeLoginForm() {
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
-        loginForm.addEventListener('submit', login);
+        loginForm.addEventListener('submit', window.login); // Utilise window.login
         console.log("Écouteur du formulaire de connexion initialisé pour submit.");
     } else {
         console.error("Formulaire de connexion (loginForm) introuvable. Vérifiez l'ID dans Embed 2.");
     }
 }
+
+// Fonction pour créer et injecter le HTML de la modale dynamiquement
+function createAndInjectModalHtml() {
+    const modalHtml = `
+        <div id="observationModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md relative overflow-y-auto max-h-[90vh]">
+                <h2 class="text-2xl font-bold mb-4 text-center">Fiche d'Observation</h2>
+                <button id="closeObservationModal" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                
+                <p class="mb-2"><strong>Mission ID:</strong> <span id="modalMissionId">${window.currentMissionId || 'N/A'}</span></p>
+                <p class="mb-4"><strong>Client:</strong> <span id="modalClientName">${window.currentClientPrenom || ''} ${window.currentClientNom || ''}</span></p>
+                
+                <form id="observationForm" class="space-y-4">
+                    <div>
+                        <label for="obsDate" class="block text-sm font-medium text-gray-700">Date d'Observation:</label>
+                        <input type="date" id="obsDate" name="obsDate" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required>
+                    </div>
+                    <div>
+                        <label for="etatSante" class="block text-sm font-medium text-gray-700">État de Santé:</label>
+                        <textarea id="etatSante" name="etatSante" rows="4" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" placeholder="Décrivez l'état de santé du client..." required></textarea>
+                    </div>
+                    <div>
+                        <label for="etatForme" class="block text-sm font-medium text-gray-700">État de Forme:</label>
+                        <input type="text" id="etatForme" name="etatForme" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" placeholder="Ex: Bonne, Fatigué..." required>
+                    </div>
+                    <div>
+                        <label for="environnement" class="block text-sm font-medium text-gray-700">Environnement:</label>
+                        <textarea id="environnement" name="environnement" rows="4" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" placeholder="Décrivez l'environnement de la mission..." required></textarea>
+                    </div>
+                    <div>
+                        <label for="photos" class="block text-sm font-medium text-gray-700">Photos (optionnel):</label>
+                        <input type="file" id="photos" name="photos" accept="image/*" multiple class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50">
+                        Clôturer la Mission et Envoyer la Fiche
+                    </button>
+                </form>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    console.log("Modal HTML injected dynamically via JS.");
+}
+
+// Point d'entrée principal du script
+document.addEventListener('DOMContentLoaded', () => {
+    initializeLoginForm(); // Initialise le formulaire de connexion
+
+    // Injecte le HTML de la modale dynamiquement via JavaScript
+    createAndInjectModalHtml();
+
+    // Attendre un court instant pour que le DOM soit mis à jour
+    // avant d'initialiser les écouteurs de la modale
+    setTimeout(() => {
+        initializeModalListeners();
+        console.log("initializeModalListeners appelée après injection et délai.");
+    }, 100); // 100ms est un bon point de départ, ajustez si nécessaire
+});
