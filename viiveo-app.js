@@ -1,4 +1,5 @@
 // viiveo-app.js
+console.log("viiveo-app.js chargé et en cours d'exécution."); // Log ajouté tout en haut
 
 // --- Variables Globales ---
 // Ces variables sont définies dans Embed 1, mais sont répétées ici pour clarté
@@ -44,13 +45,20 @@ function showMessage(message, type) {
  * Gère la connexion du prestataire.
  */
 async function login() {
-    console.log("LOGIN: Fonction login() appelée.");
+    console.log("LOGIN: Fonction login() appelée."); // Ce log devrait apparaître au clic sur le bouton
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const messageDiv = document.getElementById('message');
     const loaderDiv = document.querySelector('.viiveo-loader');
     const loginDiv = document.querySelector('.viiveo-login');
     const missionsDiv = document.querySelector('.viiveo-missions');
+
+    // Vérification des éléments du DOM
+    if (!emailInput || !passwordInput || !messageDiv || !loaderDiv || !loginDiv || !missionsDiv) {
+        console.error("LOGIN: Un ou plusieurs éléments du DOM nécessaires pour la connexion sont introuvables.");
+        showMessage("Erreur interne: Impossible d'initialiser le formulaire de connexion.", "error");
+        return;
+    }
 
     const email = emailInput.value.trim();
     const password = passwordInput.value.trim();
@@ -153,11 +161,6 @@ function renderMissions(missions) {
         showMessage("Erreur d'affichage: Conteneurs de missions manquants.", "error");
         return;
     }
-
-    // S'assurer que les conteneurs sont visibles (géré par le CSS dans Embed 2 maintenant)
-    // missionsAttenteDiv.style.display = 'block';
-    // missionsAVenirDiv.style.display = 'block';
-    // missionsTermineesDiv.style.display = 'block';
 
     missionsAttenteDiv.innerHTML = '';
     missionsAVenirDiv.innerHTML = '';
@@ -564,18 +567,177 @@ async function submitObservationForm(event) {
 
 // --- Initialisation ---
 
-// Attendre que le DOM soit complètement chargé
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM entièrement chargé.");
+// Point d'entrée principal du script
+// Utilisez window.onload pour vous assurer que tout le DOM est complètement chargé
+// avant d'initialiser les écouteurs et d'injecter du HTML.
+window.onload = () => {
+    console.log("window.onload déclenché. Initialisation de l'application...");
 
+    // Injecte le HTML de la modale dynamiquement via JavaScript
+    createAndInjectModalHtml();
+
+    // Initialise les écouteurs du formulaire de connexion et de la modale
+    initializeLoginForm();
+    initializeModalListeners(); // Appelé directement car le HTML de la modale est maintenant injecté
+};
+
+// La fonction initializeLoginForm doit être globale pour être accessible depuis le HTML de Carrd.co
+// si le bouton de soumission du formulaire de connexion utilise un attribut onclick="login()".
+// Cependant, comme nous attachons l'écouteur via JS, ce n'est pas strictement nécessaire,
+// mais la rendre globale peut aider à la déboguer ou si d'autres parties du code l'appellent.
+window.login = login; // Rend la fonction login accessible globalement
+window.loadMissions = loadMissions; // Rend loadMissions accessible globalement
+
+// Fonctions utilitaires génériques (déplacées ici pour éviter les conflits de portée)
+function show(element, isVisible) {
+    if (element) {
+        element.style.display = isVisible ? 'block' : 'none';
+    }
+}
+
+function clearForm(formElement) {
+    if (!formElement) return;
+    Array.from(formElement.elements).forEach(el => {
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+            el.value = '';
+        } else if (el.tagName === 'SELECT') {
+            el.selectedIndex = 0;
+        }
+    });
+    const photosInput = formElement.querySelector("#photos");
+    if (photosInput) photosInput.value = "";
+    const photosPreview = formElement.querySelector("#photosPreview");
+    if (photosPreview) photosPreview.innerHTML = "";
+}
+
+function tempDisable(btn, ms = 1000) {
+    if (!btn) return;
+    btn.disabled = true;
+    setTimeout(() => {
+        btn.disabled = false;
+    }, ms);
+}
+
+function createElementFromHTML(htmlString) {
+    const div = document.createElement('div');
+    div.innerHTML = htmlString.trim();
+    return div.firstChild;
+}
+
+// Fonction pour créer et injecter le HTML de la modale dynamiquement
+function createAndInjectModalHtml() {
+    const modalHtml = `
+        <div id="observationModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md relative overflow-y-auto max-h-[90vh]">
+                <h2 class="text-2xl font-bold mb-4 text-center">Fiche d'Observation</h2>
+                <button id="closeObservationModal" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                
+                <p class="mb-2"><strong>Mission ID:</strong> <span id="modalMissionId">${window.currentMissionId || 'N/A'}</span></p>
+                <p class="mb-4"><strong>Client:</strong> <span id="modalClientName">${window.currentClientPrenom || ''} ${window.currentClientNom || ''}</span></p>
+                
+                <form id="observationForm" class="space-y-4">
+                    <div>
+                        <label for="obsDate" class="block text-sm font-medium text-gray-700">Date d'Observation:</label>
+                        <input type="date" id="obsDate" name="obsDate" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required>
+                    </div>
+                    <div>
+                        <label for="etatSante" class="block text-sm font-medium text-gray-700">État de Santé:</label>
+                        <textarea id="etatSante" name="etatSante" rows="4" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" placeholder="Décrivez l'état de santé du client..." required></textarea>
+                    </div>
+                    <div>
+                        <label for="etatForme" class="block text-sm font-medium text-gray-700">État de Forme:</label>
+                        <input type="text" id="etatForme" name="etatForme" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" placeholder="Ex: Bonne, Fatigué..." required>
+                    </div>
+                    <div>
+                        <label for="environnement" class="block text-sm font-medium text-gray-700">Environnement:</label>
+                        <textarea id="environnement" name="environnement" rows="4" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" placeholder="Décrivez l'environnement de la mission..." required></textarea>
+                    </div>
+                    <div>
+                        <label for="photos" class="block text-sm font-medium text-gray-700">Photos (optionnel):</label>
+                        <input type="file" id="photos" name="photos" accept="image/*" multiple class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50">
+                        Clôturer la Mission et Envoyer la Fiche
+                    </button>
+                </form>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    console.log("Modal HTML injected dynamically via JS.");
+}
+
+// Nouvelle fonction pour initialiser les écouteurs de la modale d'observation
+function initializeModalListeners() {
+    const observationModal = document.getElementById('observationModal');
+    const closeButton = document.getElementById('closeObservationModal');
+    const observationForm = document.getElementById('observationForm');
+    const obsDateInput = document.getElementById('obsDate');
+    const photosInput = document.getElementById('photos');
+    const photosPreview = document.getElementById('photosPreview');
+
+    if (!observationModal || !closeButton || !observationForm || !obsDateInput) {
+        // Si ces éléments de base ne sont pas là, la modale n'est pas encore prête.
+        // On peut retenter l'initialisation après un court délai.
+        console.warn("Certains éléments de la modale d'observation sont manquants. Retrying initialization...");
+        setTimeout(initializeModalListeners, 100); // Retry after 100ms
+        return;
+    }
+
+    // Pré-remplir la date d'observation avec la date du jour
+    const today = new Date();
+    obsDateInput.value = today.toISOString().split('T')[0];
+
+    closeButton.addEventListener('click', () => {
+        observationModal.remove();
+        window.currentMissionId = null;
+        window.currentClientPrenom = null;
+        window.currentClientNom = null;
+        window.currentHeureDebutReelle = null;
+        window.currentLatitudeDebut = null;
+        window.currentLongitudeDebut = null;
+        console.log("Modale d'observation fermée manuellement.");
+    });
+
+    observationForm.addEventListener('submit', submitObservationForm);
+    console.log("Écouteurs de la modale d'observation initialisés.");
+
+    // Photos preview listener - Vérifiez si les éléments de prévisualisation existent
+    if (photosInput && photosPreview) {
+        photosInput.addEventListener("change", e => {
+            photosPreview.innerHTML = "";
+            const files = e.target.files;
+            if (files.length > 3) {
+                alert("Vous ne pouvez sélectionner que 3 photos max."); // Utilisez une modale personnalisée si possible
+                photosInput.value = "";
+                return;
+            }
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    const img = document.createElement("img");
+                    img.src = ev.target.result;
+                    img.style.maxWidth = "100px"; // Style pour la prévisualisation
+                    img.style.maxHeight = "100px";
+                    img.style.margin = "5px";
+                    photosPreview.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+    } else {
+        console.warn("Éléments de prévisualisation des photos (photosInput ou photosPreview) manquants.");
+    }
+}
+
+// Nouvelle fonction pour initialiser les écouteurs du formulaire de connexion
+function initializeLoginForm() {
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', login);
-        console.log("Écouteur du formulaire de connexion initialisé.");
+        console.log("Écouteur du formulaire de connexion initialisé pour submit.");
     } else {
-        console.error("Formulaire de connexion (loginForm) introuvable.");
+        console.error("Formulaire de connexion (loginForm) introuvable. Vérifiez l'ID dans Embed 2.");
     }
-});
-
-// initializeModalListeners n'est plus nécessaire car les écouteurs sont ajoutés directement dans openObservationModal
-// au moment où la modale est créée.
+}
