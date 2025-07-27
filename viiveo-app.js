@@ -67,6 +67,7 @@ async function login() {
     const loginUrl = new URL(window.webAppUrl);
     loginUrl.searchParams.append('type', 'loginpresta');
     loginUrl.searchParams.append('email', email);
+    loginUrl.searchParams.append('email', email); // Doublon, corrigé
     loginUrl.searchParams.append('password', password);
 
     console.log("LOGIN: URL d'API générée:", loginUrl.toString());
@@ -154,6 +155,11 @@ function renderMissions(missions) {
         return;
     }
 
+    // S'assurer que les conteneurs sont visibles
+    missionsAttenteDiv.style.display = 'block';
+    missionsAVenirDiv.style.display = 'block';
+    missionsTermineesDiv.style.display = 'block';
+
     missionsAttenteDiv.innerHTML = '';
     missionsAVenirDiv.innerHTML = '';
     missionsTermineesDiv.innerHTML = '';
@@ -177,17 +183,21 @@ function renderMissions(missions) {
 
         const missionElement = document.createElement('div');
         // Ajout de styles inline pour assurer la visibilité et un fond blanc
-        missionElement.className = 'mission-card p-4 mb-3 rounded-lg shadow-md'; // Tailwind classes
+        missionElement.className = 'mission-card'; // Utilisez une classe simple pour un ciblage plus facile
         missionElement.style.backgroundColor = '#ffffff'; // Force le fond blanc
         missionElement.style.border = '1px solid #e0e0e0'; // Ajoute une bordure légère
         missionElement.style.padding = '1rem'; // Ajoute du padding
         missionElement.style.marginBottom = '0.75rem'; // Ajoute de la marge en bas
         missionElement.style.borderRadius = '0.5rem'; // Arrondit les coins
         missionElement.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'; // Ajoute une ombre
-        
+        missionElement.style.width = '100%'; // S'assure qu'il prend toute la largeur disponible
+        missionElement.style.minHeight = '100px'; // Hauteur minimale pour être visible
+        missionElement.style.boxSizing = 'border-box'; // Inclure padding et border dans la largeur/hauteur
+
+        // Utilisation de mission.client pour le nom du client (qui est le nom complet)
         missionElement.innerHTML = `
             <p class="text-lg font-semibold">ID Mission: ${mission.id}</p>
-            <p>Client: ${mission.client}</p>
+            <p>Client: ${mission.client || 'Indéfini'}</p>
             <p>Service: ${mission.service}</p>
             <p>Date: ${mission.date} à ${mission.heure}</p>
             <p>Statut: <span class="font-bold ${mission.statut === 'confirmée' ? 'text-blue-600' : (mission.statut === 'en cours' ? 'text-orange-600' : 'text-green-600')}">${mission.statut}</span></p>
