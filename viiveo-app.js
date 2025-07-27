@@ -557,7 +557,7 @@ async function submitObservationForm(event) {
         }
     } catch (error) {
         console.error("Erreur lors de l'appel API ficheobservation:", error);
-        showMessage('Erreur de communication avec le serveur lors de l'envoi de la fiche.', 'error');
+        showMessage('Erreur de communication avec le serveur lors de l\'envoi de la fiche.', 'error');
         if (observationModal) observationModal.style.display = 'flex'; // Réaffiche la modale en cas d'erreur
     } finally {
         loaderDiv.style.display = 'none';
