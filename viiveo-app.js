@@ -39,8 +39,9 @@ window.openModalStartPrestation = function(missionId, clientPrenom, clientNom) {
     }
 
     currentMissionId = missionId;
-    currentClientPrenom = clientPrenom;
-    currentClientNom = clientNom;
+    // Assurez-vous que clientPrenom et clientNom sont bien passés depuis le bouton
+    currentClientPrenom = clientPrenom || ""; // Définit à "" si undefined
+    currentClientNom = clientNom || ""; // Définit à "" si undefined
     currentPrestatairePrenom = window.currentPrenom;
     currentPrestataireNom = window.currentNom;
 
@@ -63,10 +64,9 @@ function closeModal() {
     if (modalOverlay) {
         modalOverlay.style.display = "none";
     }
-    const obsForm = document.getElementById("obsForm");
-    if (obsForm) {
-        clearForm(obsForm);
-    }
+    // Correction ici : Appel de clearFormFields() au lieu de clearForm()
+    clearFormFields(); // Appelle la fonction existante pour nettoyer le formulaire
+
     const geolocationMessage = document.getElementById("geolocationMessage");
     if (geolocationMessage) {
         geolocationMessage.style.display = "none";
@@ -185,8 +185,7 @@ async function startQrScanner() {
                             geolocationMessage.style.color = "#d32f2f";
                         }
                         console.error("Erreur de géolocalisation lors du scan:", geoError);
-                        // NOUVEAU : Ne pas fermer la modale ici pour laisser le message visible
-                        // closeModal(); // RETIRÉ
+                        // Ne pas fermer la modale ici pour laisser le message visible
                         return; // Empêche la suite si géolocalisation échoue
                     }
 
@@ -253,7 +252,11 @@ function showForm() {
 
     stepQR.style.display = "none";
     stepForm.style.display = "flex";
-    clientNameInput.value = `${currentClientPrenom} ${currentClientNom}`;
+    // Utilise les variables globales currentClientPrenom et currentClientNom
+    clientNameInput.value = `${currentClientPrenom} ${currentClientNom}`.trim();
+    if (clientNameInput.value === "") {
+        clientNameInput.value = "Client inconnu";
+    }
     setTodayDate(obsDateInput);
 }
 
@@ -266,7 +269,7 @@ function clearFormFields() {
     const photosPreview = document.getElementById("photosPreview");
 
     if (obsDateInput) obsDateInput.value = "";
-    if (etatSanteInput) etatSanteInput.value = "";
+    if (etatSanteInput) etatSanteInput.value = ""; // Correction: était écrit deux fois
     if (etatFormeInput) etatFormeInput.value = "";
     if (environnementInput) environnementInput.value = "";
     if (photosInput) photosInput.value = "";
@@ -574,14 +577,31 @@ function renderTable(missions, type = "") {
     html += "</tr></thead><tbody>";
 
     missions.forEach(m => {
-        const date = new Date(m.date).toLocaleDateString('fr-FR');
-        const heure = new Date(m.heure);
-        const formattedHeure = `${String(heure.getHours()).padStart(2, '0')}h${String(heure.getMinutes()).padStart(2, '0')}`;
+        // Correction pour l'heure NaNhNaN: Combinaison de date et heure
+        let formattedHeure = "N/A";
+        if (m.date && m.heure) {
+            try {
+                // Tente de créer une date complète pour une meilleure robustesse
+                const dateTimeString = `${m.date}T${m.heure}`; // Exemple: "2025-07-27T13:00:00"
+                const fullDate = new Date(dateTimeString);
+                if (!isNaN(fullDate.getTime())) { // Vérifie si la date est valide
+                    formattedHeure = `${String(fullDate.getHours()).padStart(2, '0')}h${String(fullDate.getMinutes()).padStart(2, '0')}`;
+                }
+            } catch (e) {
+                console.warn("Erreur de parsing de l'heure pour la mission", m.id, e);
+            }
+        }
+
+        // Correction pour "Client indéfini": Utilise m.client ou un fallback
+        const clientName = m.client && m.client.trim() !== "" ? m.client : "Client inconnu";
+        const date = m.date ? new Date(m.date).toLocaleDateString('fr-FR') : "Date inconnue";
+
+
         html += `<tr>
-            <td data-label="ID">${m.id}</td>
-            <td data-label="Client">${m.client}</td>
-            <td data-label="Adresse">${m.adresse}</td>
-            <td data-label="Service">${m.service}</td>
+            <td data-label="ID">${m.id || 'N/A'}</td>
+            <td data-label="Client">${clientName}</td>
+            <td data-label="Adresse">${m.adresse || 'N/A'}</td>
+            <td data-label="Service">${m.service || 'N/A'}</td>
             <td data-label="Date">${date}</td>
             <td data-label="Heure">${formattedHeure}</td>`;
         if (type === "attente") {
@@ -591,7 +611,7 @@ function renderTable(missions, type = "") {
             </td>`;
         } else if (type === "validee") {
             html += `<td data-label="Actions" class="actions">
-            <button class="btn-action btn-start" data-mission-id="${m.id}" data-client-prenom="${m.clientPrenom}" data-client-nom="${m.clientNom}" data-action-type="start">▶️</button>
+            <button class="btn-action btn-start" data-mission-id="${m.id}" data-client-prenom="${m.clientPrenom || ''}" data-client-nom="${m.clientNom || ''}" data-action-type="start">▶️</button>
             </td>`;
         }
         html += "</tr>";
