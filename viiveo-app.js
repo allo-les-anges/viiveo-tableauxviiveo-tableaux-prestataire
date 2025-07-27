@@ -84,7 +84,7 @@ async function startQrScanner() {
     const geolocationMessage = document.getElementById("geolocationMessage");
 
     if (!qrReaderElement) {
-        console.error("Élément 'qr-reader' non trouvé. Le scanner ne peut pas démarrer.");
+        console.error("Éléments 'qr-reader' non trouvé. Le scanner ne peut pas démarrer.");
         alert("Erreur: Le scanner QR ne peut pas démarrer (élément manquant).");
         closeModal();
         return;
@@ -269,7 +269,7 @@ function clearFormFields() {
     const photosPreview = document.getElementById("photosPreview");
 
     if (obsDateInput) obsDateInput.value = "";
-    if (etatSanteInput) etatSanteInput.value = ""; // Correction: était écrit deux fois
+    if (etatSanteInput) etatSanteInput.value = "";
     if (etatFormeInput) etatFormeInput.value = "";
     if (environnementInput) environnementInput.value = "";
     if (photosInput) photosInput.value = "";
@@ -579,22 +579,44 @@ function renderTable(missions, type = "") {
     missions.forEach(m => {
         // Correction pour l'heure NaNhNaN: Combinaison de date et heure
         let formattedHeure = "N/A";
-        if (m.date && m.heure) {
+        let displayDate = "Date inconnue";
+
+        if (m.date) {
+            // Tente de convertir la date au format YYYY-MM-DD si elle est en DD/MM/YYYY
+            const parts = String(m.date).split('/');
+            let isoDate = String(m.date); // Par défaut, utilise la date telle quelle
+
+            if (parts.length === 3) {
+                isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`; // Convertit en YYYY-MM-DD
+            }
+
             try {
-                // Tente de créer une date complète pour une meilleure robustesse
-                const dateTimeString = `${m.date}T${m.heure}`; // Exemple: "2025-07-27T13:00:00"
-                const fullDate = new Date(dateTimeString);
-                if (!isNaN(fullDate.getTime())) { // Vérifie si la date est valide
-                    formattedHeure = `${String(fullDate.getHours()).padStart(2, '0')}h${String(fullDate.getMinutes()).padStart(2, '0')}`;
+                const dateObj = new Date(isoDate);
+                if (!isNaN(dateObj.getTime())) { // Vérifie si la date est valide
+                    displayDate = dateObj.toLocaleDateString('fr-FR'); // Pour l'affichage
                 }
             } catch (e) {
-                console.warn("Erreur de parsing de l'heure pour la mission", m.id, e);
+                console.warn("Erreur de parsing de la date pour la mission", m.id, e);
+            }
+
+            if (m.heure) {
+                try {
+                    // Combine la date ISO avec l'heure pour une parsing robuste
+                    const dateTimeString = `${isoDate}T${m.heure}`;
+                    const fullDate = new Date(dateTimeString);
+                    if (!isNaN(fullDate.getTime())) { // Vérifie si la date/heure est valide
+                        formattedHeure = `${String(fullDate.getHours()).padStart(2, '0')}h${String(fullDate.getMinutes()).padStart(2, '0')}`;
+                    } else {
+                        console.warn("Failed to parse full date/time for mission", m.id, dateTimeString);
+                    }
+                } catch (e) {
+                    console.warn("Erreur de parsing de l'heure pour la mission", m.id, e);
+                }
             }
         }
 
         // Correction pour "Client indéfini": Utilise m.client ou un fallback
-        const clientName = m.client && m.client.trim() !== "" ? m.client : "Client inconnu";
-        const date = m.date ? new Date(m.date).toLocaleDateString('fr-FR') : "Date inconnue";
+        const clientName = m.client && String(m.client).trim() !== "" ? String(m.client) : "Client inconnu";
 
 
         html += `<tr>
@@ -602,7 +624,7 @@ function renderTable(missions, type = "") {
             <td data-label="Client">${clientName}</td>
             <td data-label="Adresse">${m.adresse || 'N/A'}</td>
             <td data-label="Service">${m.service || 'N/A'}</td>
-            <td data-label="Date">${date}</td>
+            <td data-label="Date">${displayDate}</td>
             <td data-label="Heure">${formattedHeure}</td>`;
         if (type === "attente") {
             html += `<td data-label="Actions" class="actions">
