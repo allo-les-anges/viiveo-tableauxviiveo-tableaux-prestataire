@@ -123,6 +123,7 @@ async function startQrScanner() {
             async (decodedText, decodedResult) => {
                 console.log(`QR Code détecté: ${decodedText}`);
                 try {
+                    // Arrêter le scanner immédiatement après la détection pour éviter de multiples scans
                     if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
                         await qrScannerInstance.stop();
                         qrScannerInstance = null;
@@ -145,7 +146,7 @@ async function startQrScanner() {
                             geolocationMessage.style.color = "#d32f2f";
                         }
                         console.error("Géolocalisation non supportée.");
-                        return;
+                        return; // Empêche la suite si non supporté
                     }
 
                     if (geolocationMessage) {
@@ -162,21 +163,21 @@ async function startQrScanner() {
                         currentLon = position.coords.longitude;
                         currentLatitude = currentLat;
                         currentLongitude = currentLon;
-                        if (geolocationMessage) geolocationMessage.style.display = "none";
+                        if (geolocationMessage) geolocationMessage.style.display = "none"; // Masque le message si succès
                     } catch (geoError) {
                         let geoMessage = "⚠️ Erreur de géolocalisation.";
                         switch (geoError.code) {
                             case geoError.PERMISSION_DENIED:
-                                geoMessage = "❌ Vous devez autoriser la géolocalisation pour continuer.";
+                                geoMessage = "❌ Vous devez autoriser la géolocalisation pour continuer. Veuillez vérifier les paramètres de votre navigateur et de votre téléphone.";
                                 break;
                             case geoError.POSITION_UNAVAILABLE:
-                                geoMessage = "📍 Position non disponible.";
+                                geoMessage = "📍 Position non disponible. Veuillez vérifier votre connexion ou votre environnement.";
                                 break;
                             case geoError.TIMEOUT:
-                                geoMessage = "⏱️ Le délai de localisation est dépassé.";
+                                geoMessage = "⏱️ Le délai de localisation est dépassé. Veuillez réessayer.";
                                 break;
                             default:
-                                geoMessage = "❌ Erreur inconnue.";
+                                geoMessage = "❌ Erreur inconnue de géolocalisation.";
                         }
                         if (geolocationMessage) {
                             geolocationMessage.textContent = geoMessage;
@@ -184,7 +185,9 @@ async function startQrScanner() {
                             geolocationMessage.style.color = "#d32f2f";
                         }
                         console.error("Erreur de géolocalisation lors du scan:", geoError);
-                        return;
+                        // NOUVEAU : Ne pas fermer la modale ici pour laisser le message visible
+                        // closeModal(); // RETIRÉ
+                        return; // Empêche la suite si géolocalisation échoue
                     }
 
                     const fullAppsScriptApiUrl = `${window.webAppUrl}?type=verifqr&idclient=${encodeURIComponent(idClient)}&email=${encodeURIComponent(window.currentEmail)}&latitude=${encodeURIComponent(currentLat)}&longitude=${encodeURIComponent(currentLon)}`;
@@ -420,7 +423,7 @@ function createAndInjectModalHtml() {
                 <div id="stepQR" style="display:none;">
                     <h2>📸 Scanner le QR code client</h2>
                     <div id="qr-reader"></div>
-                    <p id="geolocationMessage" style="color: #333; font-weight: bold; text-align: center; margin-top: 15px; display: none;"></p>
+                    <p id="geolocationMessage" style="color: #d32f2f; font-weight: bold; text-align: center; margin-top: 15px; display: none;"></p>
                     <button id="btnCancelQR">Annuler</button>
                 </div>
 
@@ -623,7 +626,8 @@ function attachMissionButtonListeners() {
 async function handleValidateMission(event) {
     const missionId = event.currentTarget.dataset.missionId;
     console.log(`handleValidateMission appelée pour ID: ${missionId}`);
-    if (!confirm("Confirmer la validation ?")) return;
+    // Remplacer confirm() par une modale personnalisée si possible
+    if (!window.confirm("Confirmer la validation ?")) return;
     const callbackName = 'cbValider' + Date.now();
     const url = `${window.webAppUrl}?type=validerMission&id=${encodeURIComponent(missionId)}`;
     await window.callApiJsonp(url, callbackName);
@@ -634,6 +638,7 @@ async function handleValidateMission(event) {
 async function handleRefuseMission(event) {
     const missionId = event.currentTarget.dataset.missionId;
     console.log(`handleRefuseMission appelée pour ID: ${missionId}`);
+    // Remplacer prompt() par une modale personnalisée si possible
     const alt = prompt("Nouvelle date/heure ?");
     if (!alt) return;
     const callbackName = 'cbRefuser' + Date.now();
