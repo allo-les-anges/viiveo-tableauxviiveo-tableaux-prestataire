@@ -169,7 +169,7 @@ function renderMissions(missions) {
 
     missions.forEach(mission => {
         console.log("RENDER MISSIONS: Traitement de la mission:", mission); // Log complet de la mission
-        // Logique de parsing de date plus robuste si mission.date n'est pas toujours un objet Date
+        
         let missionDate;
         if (mission.date instanceof Date) {
             missionDate = mission.date;
@@ -184,40 +184,49 @@ function renderMissions(missions) {
         const missionElement = document.createElement('div');
         missionElement.className = 'mission-card'; // Utilise la classe pour les styles CSS définis dans Embed 2
         
-        // Utilisation de mission.client pour le nom du client (qui est le nom complet)
-        // Ajout de mission.prenomClient et mission.nomClient pour le débogage si 'client' est vide
+        // Déterminer le nom du client de manière robuste
+        const clientDisplayName = mission.client || (mission.clientPrenom && mission.clientNom ? `${mission.clientPrenom} ${mission.clientNom}` : 'Indéfini');
+
+        // Déterminer si le bouton scanner doit être affiché
+        const showScannerButton = ['confirmée', 'en cours'].includes(mission.statut);
+
         missionElement.innerHTML = `
             <p class="text-lg font-semibold">ID Mission: ${mission.id}</p>
-            <p>Client: ${mission.client || (mission.prenomClient + ' ' + mission.nomClient).trim() || 'Indéfini'}</p>
+            <p>Client: ${clientDisplayName}</p>
             <p>Service: ${mission.service}</p>
             <p>Date: ${mission.date} à ${mission.heure}</p>
             <p>Statut: <span class="font-bold ${mission.statut === 'confirmée' ? 'text-blue-600' : (mission.statut === 'en cours' ? 'text-orange-600' : 'text-green-600')}">${mission.statut}</span></p>
+            ${showScannerButton ? `
             <button class="scan-qr-button mt-3 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                     data-mission-id="${mission.id}"
                     data-client-id="${mission.idClientQR || ''}"
-                    data-client-prenom="${mission.prenomClient || ''}"
-                    data-client-nom="${mission.nomClient || ''}"
+                    data-client-prenom="${mission.clientPrenom || ''}"
+                    data-client-nom="${mission.clientNom || ''}"
                     data-heure-debut-reelle="${mission.heureDebutReelle || ''}"
                     data-latitude-debut="${mission.latitudeDebut || ''}"
                     data-longitude-debut="${mission.longitudeDebut || ''}">
                 Scanner QR
             </button>
+            ` : ''}
         `;
 
-        const scanButton = missionElement.querySelector('.scan-qr-button');
-        scanButton.addEventListener('click', () => {
-            console.log(`RENDER MISSIONS: Bouton Scanner QR cliqué pour mission ${mission.id}`);
-            // Stocker les infos de la mission dans des variables globales temporaires avant le scan
-            window.currentMissionId = scanButton.dataset.missionId;
-            window.currentClientPrenom = scanButton.dataset.clientPrenom;
-            window.currentClientNom = scanButton.dataset.clientNom;
-            window.currentHeureDebutReelle = scanButton.dataset.heureDebutReelle;
-            window.currentLatitudeDebut = scanButton.dataset.latitudeDebut;
-            window.currentLongitudeDebut = scanButton.dataset.longitudeDebut;
+        if (showScannerButton) {
+            const scanButton = missionElement.querySelector('.scan-qr-button');
+            scanButton.addEventListener('click', () => {
+                console.log(`RENDER MISSIONS: Bouton Scanner QR cliqué pour mission ${mission.id}`);
+                // Stocker les infos de la mission dans des variables globales temporaires avant le scan
+                window.currentMissionId = scanButton.dataset.missionId;
+                window.currentClientPrenom = scanButton.dataset.clientPrenom;
+                window.currentClientNom = scanButton.dataset.clientNom;
+                window.currentHeureDebutReelle = scanButton.dataset.heureDebutReelle;
+                window.currentLatitudeDebut = scanButton.dataset.latitudeDebut;
+                window.currentLongitudeDebut = scanButton.dataset.longitudeDebut;
 
-            startQrScanner(); // Démarrer le scanner
-        });
+                startQrScanner(); // Démarrer le scanner
+            });
+        }
 
+        // Ajout du statut "en attente" pour l'affichage
         if (mission.statut === 'confirmée') {
             missionsAttenteDiv.appendChild(missionElement);
             console.log(`RENDER MISSIONS: Mission ${mission.id} ajoutée à missions-attente.`);
@@ -227,6 +236,9 @@ function renderMissions(missions) {
         } else if (mission.statut === 'terminée') {
             missionsTermineesDiv.appendChild(missionElement);
             console.log(`RENDER MISSIONS: Mission ${mission.id} ajoutée à missions-terminees.`);
+        } else if (mission.statut === 'en attente') { // Ajout de la condition pour "en attente"
+            missionsAttenteDiv.appendChild(missionElement); // Ou une autre section si vous en avez une spécifique
+            console.log(`RENDER MISSIONS: Mission ${mission.id} (en attente) ajoutée à missions-attente.`);
         } else {
             console.warn(`RENDER MISSIONS: Statut de mission inconnu pour ID ${mission.id}: ${mission.statut}. Non affichée.`);
         }
@@ -542,7 +554,7 @@ async function submitObservationForm(event) {
         }
     } catch (error) {
         console.error("Erreur lors de l'appel API ficheobservation:", error);
-        showMessage('Erreur de communication avec le serveur lors de l\'envoi de la fiche.', 'error');
+        showMessage('Erreur de communication avec le serveur lors de l'envoi de la fiche.', 'error');
         if (observationModal) observationModal.style.display = 'flex'; // Réaffiche la modale en cas d'erreur
     } finally {
         loaderDiv.style.display = 'none';
