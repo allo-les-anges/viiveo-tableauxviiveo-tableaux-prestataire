@@ -1,0 +1,627 @@
+Embed 1 
+
+<!-- Import de la police Inter -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<!-- Cartes de services -->
+<!-- Lien vers page prestataires -->
+<h1>
+<div style="text-align: center; margin-top: 30px;">
+<a href="https://viiveo-prestatairespres.carrd.co/" target="_blank" class="btn-presta">
+En savoir plus sur nos prestataires ?
+</a>
+</div>
+</h1>
+<div id="services" class="grid-container">
+<div class="card" onclick="openModal('modal-aide-menagere')">
+<img src="https://i.postimg.cc/SxdnZmVb/aide-m-nag-re.png" alt="Aide ménagère">
+<h3>Aide ménagère</h3>
+<p>Un coup de main professionnel pour l’entretien de la maison et du linge, en toute confiance.</p>
+</div>
+<div class="card" onclick="openModal('modal-courses')">
+<img src="https://i.postimg.cc/XN97HV71/courses.png" alt="Courses à domicile">
+<h3>Courses à domicile</h3>
+<p>Nous faisons les courses pour vous ou avec vous, selon vos envies et vos besoins.</p>
+</div>
+<div class="card" onclick="openModal('modal-coiffure')">
+<img src="https://i.postimg.cc/hPg4NHXD/coiffure.png" alt="Coiffure à domicile">
+<h3>Coiffure à domicile</h3>
+<p>Des professionnels qualifiés viennent à domicile pour prendre soin de vous.</p>
+</div>
+<div class="card" onclick="openModal('modal-jardinage')">
+<img src="https://i.postimg.cc/1twPjHPV/jardinage.png" alt="Jardinage">
+<h3>Jardinage</h3>
+<p>Entretien de votre jardin, pelouse, haies ou potager par des intervenants expérimentés.</p>
+</div>
+<div class="card" onclick="openModal('modal-transport')">
+<img src="https://i.postimg.cc/Kc7x7JJd/Transport.png" alt="Transport accompagné">
+<h3>Transport accompagné</h3>
+<p>Un accompagnement sûr et chaleureux pour vos trajets et rendez-vous importants.</p>
+</div>
+<div class="card" onclick="openModal('modal-assistance')">
+<img src="https://i.postimg.cc/DyBhHmV6/assistance.png" alt="Assistance / Secours">
+<h3>Assistance / Secours</h3>
+<p>Une aide rapide et humaine en cas de besoin urgent ou de situation délicate à domicile.</p>
+</div>
+<!-- Nouvelle carte : Homme à tout faire -->
+<div class="card" onclick="openModal('modal-homme')">
+<img src="https://i.postimg.cc/DwzHfByW/19.png" alt="Homme à tout faire">
+<h3>Homme à tout faire</h3>
+<p>Petits travaux de bricolage, montages, réparations diverses avec soin et efficacité.</p>
+</div>
+
+<!-- Nouvelle carte : Visite bénévole -->
+<div class="card" onclick="openModal('modal-benevole')">
+<img src="https://i.postimg.cc/52jKWynL/20.png" alt="Visite bénévole">
+<h3>Visite bénévole</h3>
+<p>Recevez la visite chaleureuse d'un bénévole pour discuter, rompre la solitude et partager un moment.</p>
+</div>
+
+<!-- Nouvelle carte : Commande de repas -->
+<div class="card" onclick="openModal('modal-repas')">
+<img src="https://i.postimg.cc/GmBKSNmj/21.png" alt="Commande de repas">
+<h3>Commande de repas</h3>
+<p>Besoin d'un repas livré chez vous ? Nous vous mettons en lien avec le CPAS ou la Commune.</p>
+</div>
+</div>
+
+<!-- Modale Aide ménagère -->
+<div id="modal-aide-menagere" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal('modal-aide-menagere')">&times;</span>
+<form name="form-aide-menagere" id="form-aide-menagere" method="POST" action="https://script.google.com/macros/s/AKfycbzEEZZnZJK1BEXlCk81ogi0Aa7MFGunOkjS5s2CCDIZPSkHq0OtPAcEBLrkXp-fpb8aaQ/exec?type=formClient">
+<h2>Demande : Aide ménagère</h2>
+<label>🔒 Mot de passe</label>
+<input type="password" name="password" required>
+<label>👤 Prénom</label>
+<input type="text" name="prenom" required>
+<label>👤 Nom</label>
+<input type="text" name="nom" required>
+<label>🏠 Adresse complète</label>
+<input type="text" name="adresse" required>
+<label>📧 Email</label>
+<input type="email" name="email" required>
+<label>🛎️ Nature du service</label>
+<input type="text" name="service" value="Aide ménagère" readonly>
+<label>📅 Date souhaitée</label>
+<input type="date" name="date" required>
+<label>⏰ Heure de passage souhaitée</label>
+<input type="time" name="heure" required>
+<label>🔽 Choisir un prestataire (optionnel)</label>
+<select name="prestataire" id="select-prestataire-aide-menagere">
+<option value="" selected>Pas de préférence</option>
+</select>
+<label>📝 Commentaire</label>
+<textarea name="commentaire"></textarea>
+<button type="submit">Envoyer la demande</button>
+</form>
+</div>
+</div>
+
+<!-- Modale Courses à domicile -->
+<div id="modal-courses" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal('modal-courses')">&times;</span>
+<form name="form-courses" method="POST" action="https://script.google.com/macros/s/AKfycbzEEZZnZJK1BEXlCk81ogi0Aa7MFGunOkjS5s2CCDIZPSkHq0OtPAcEBLrkXp-fpb8aaQ/exec?type=formClient">
+<h2>Demande : Courses à domicile</h2>
+<label>🔒 Mot de passe</label>
+<input type="password" name="password" required>
+<label>👤 Prénom</label>
+<input type="text" name="prenom" required>
+<label>👤 Nom</label>
+<input type="text" name="nom" required>
+<label>🏠 Adresse complète</label>
+<input type="text" name="adresse" required>
+<label>📧 Email</label>
+<input type="email" name="email" required>
+<label>🛎️ Nature du service</label>
+<input type="text" name="service" value="Courses à domicile" readonly>
+<label>📅 Date souhaitée</label>
+<input type="date" name="date" required>
+<label>⏰ Heure de passage souhaitée</label>
+<input type="time" name="heure" required>
+<label>🔽 Choisir un prestataire (optionnel)</label>
+<select name="prestataire" id="select-prestataire-courses">
+<option value="" selected>Pas de préférence</option>
+</select>
+<label>📝 Commentaire</label>
+<textarea name="commentaire"></textarea>
+<button type="submit">Envoyer la demande</button>
+</form>
+</div>
+</div>
+
+<!-- Modale Coiffure à domicile -->
+<div id="modal-coiffure" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal('modal-coiffure')">&times;</span>
+<form name="form-coiffure" method="POST" action="https://script.google.com/macros/s/AKfycbzEEZZnZJK1BEXlCk81ogi0Aa7MFGunOkjS5s2CCDIZPSkHq0OtPAcEBLrkXp-fpb8aaQ/exec?type=formClient">
+<h2>Demande : Coiffure à domicile</h2>
+<label>🔒 Mot de passe</label>
+<input type="password" name="password" required>
+<label>👤 Prénom</label>
+<input type="text" name="prenom" required>
+<label>👤 Nom</label>
+<input type="text" name="nom" required>
+<label>🏠 Adresse complète</label>
+<input type="text" name="adresse" required>
+<label>📧 Email</label>
+<input type="email" name="email" required>
+<label>🛎️ Nature du service</label>
+<input type="text" name="service" value="Coiffure à domicile" readonly>
+<label>📅 Date souhaitée</label>
+<input type="date" name="date" required>
+<label>⏰ Heure de passage souhaitée</label>
+<input type="time" name="heure" required>
+<label>🔽 Choisir un prestataire (optionnel)</label>
+<select name="prestataire" id="select-prestataire-coiffure">
+<option value="" selected>Pas de préférence</option>
+</select>
+<label>📝 Commentaire</label>
+<textarea name="commentaire"></textarea>
+<button type="submit">Envoyer la demande</button>
+</form>
+</div>
+</div>
+
+<!-- Modale Jardinage -->
+<div id="modal-jardinage" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal('modal-jardinage')">&times;</span>
+<form name="form-jardinage" method="POST" action="https://script.google.com/macros/s/AKfycbzEEZZnZJK1BEXlCk81ogi0Aa7MFGunOkjS5s2CCDIZPSkHq0OtPAcEBLrkXp-fpb8aaQ/exec?type=formClient">
+<h2>Demande : Jardinage</h2>
+<label>🔒 Mot de passe</label>
+<input type="password" name="password" required>
+<label>👤 Prénom</label>
+<input type="text" name="prenom" required>
+<label>👤 Nom</label>
+<input type="text" name="nom" required>
+<label>🏠 Adresse complète</label>
+<input type="text" name="adresse" required>
+<label>📧 Email</label>
+<input type="email" name="email" required>
+<label>🛎️ Nature du service</label>
+<input type="text" name="service" value="Jardinage" readonly>
+<label>📅 Date souhaitée</label>
+<input type="date" name="date" required>
+<label>⏰ Heure de passage souhaitée</label>
+<input type="time" name="heure" required>
+<label>🔽 Choisir un prestataire (optionnel)</label>
+<select name="prestataire" id="select-prestataire-jardinage">
+<option value="" selected>Pas de préférence</option>
+</select>
+<label>📝 Commentaire</label>
+<textarea name="commentaire"></textarea>
+<button type="submit">Envoyer la demande</button>
+</form>
+</div>
+</div>
+
+<!-- Modale Transport accompagné -->
+<div id="modal-transport" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal('modal-transport')">&times;</span>
+<form name="form-transport" method="POST" action="https://script.google.com/macros/s/AKfycbzEEZZnZJK1BEXlCk81ogi0Aa7MFGunOkjS5s2CCDIZPSkHq0OtPAcEBLrkXp-fpb8aaQ/exec?type=formClient">
+<h2>Demande : Transport accompagné</h2>
+<label>🔒 Mot de passe</label>
+<input type="password" name="password" required>
+<label>👤 Prénom</label>
+<input type="text" name="prenom" required>
+<label>👤 Nom</label>
+<input type="text" name="nom" required>
+<label>🏠 Adresse complète</label>
+<input type="text" name="adresse" required>
+<label>📧 Email</label>
+<input type="email" name="email" required>
+<label>🛎️ Nature du service</label>
+<input type="text" name="service" value="Transport accompagné" readonly>
+<label>📅 Date souhaitée</label>
+<input type="date" name="date" required>
+<label>⏰ Heure de passage souhaitée</label>
+<input type="time" name="heure" required>
+<label>🔽 Choisir un prestataire (optionnel)</label>
+<select name="prestataire" id="select-prestataire-transport">
+<option value="" selected>Pas de préférence</option>
+</select>
+<label>📝 Commentaire</label>
+<textarea name="commentaire"></textarea>
+<button type="submit">Envoyer la demande</button>
+</form>
+</div>
+</div>
+
+<!-- Modale Assistance / Secours -->
+<div id="modal-assistance" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal('modal-assistance')">&times;</span>
+<form name="form-assistance" method="POST" action="https://script.google.com/macros/s/AKfycbzEEZZnZJK1BEXlCk81ogi0Aa7MFGunOkjS5s2CCDIZPSkHq0OtPAcEBLrkXp-fpb8aaQ/exec?type=formClient">
+<h2>Demande : Assistance / Secours</h2>
+<label>🔒 Mot de passe</label>
+<input type="password" name="password" required>
+<label>👤 Prénom</label>
+<input type="text" name="prenom" required>
+<label>👤 Nom</label>
+<input type="text" name="nom" required>
+<label>🏠 Adresse complète</label>
+<input type="text" name="adresse" required>
+<label>📧 Email</label>
+<input type="email" name="email" required>
+<label>🛎️ Nature du service</label>
+<input type="text" name="service" value="Assistance / Secours" readonly>
+<label>📅 Date souhaitée</label>
+<input type="date" name="date" required>
+<label>⏰ Heure de passage souhaitée</label>
+<input type="time" name="heure" required>
+<label>🔽 Choisir un prestataire (optionnel)</label>
+<select name="prestataire" id="select-prestataire-assistance">
+<option value="" selected>Pas de préférence</option>
+</select>
+<label>📝 Commentaire</label>
+<textarea name="commentaire"></textarea>
+<button type="submit">Envoyer la demande</button>
+</form>
+</div>
+</div>
+
+<!-- Modale Homme à tout faire -->
+<!-- Modale : Homme à tout faire -->
+<div id="modal-homme" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal('modal-homme')">&times;</span>
+<form name="form-homme" method="POST" action="https://script.google.com/macros/s/AKfycbzEEZZnZJK1BEXlCk81ogi0Aa7MFGunOkjS5s2CCDIZPSkHq0OtPAcEBLrkXp-fpb8aaQ/exec?type=formClient">
+<h2>Demande : Homme à tout faire</h2>
+<label>🔒 Mot de passe</label>
+<input type="password" name="password" required>
+<label>👤 Prénom</label>
+<input type="text" name="prenom" required>
+
+<label>👤 Nom</label>
+<input type="text" name="nom" required>
+
+<label>🏠 Adresse complète</label>
+<input type="text" name="adresse" required>
+
+<label>📧 Email</label>
+<input type="email" name="email" required>
+
+<label>🛎️ Nature du service</label>
+<input type="text" name="service" value="Homme à tout faire" readonly>
+
+<label>📅 Date souhaitée</label>
+<input type="date" name="date" required>
+
+<label>⏰ Heure de passage souhaitée</label>
+<input type="time" name="heure" required>
+
+<label>🔽 Choisir un prestataire (optionnel)</label>
+<select name="prestataire" id="select-prestataire-homme">
+<option value="" selected>Pas de préférence</option>
+</select>
+
+<label>📝 Commentaire</label>
+<textarea name="commentaire"></textarea>
+
+<button type="submit">Envoyer la demande</button>
+</form>
+</div>
+</div>
+
+<!-- Modale : Visite de bénévole -->
+<div id="modal-benevole" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal('modal-benevole')">&times;</span>
+<form name="form-benevole" method="POST" action="https://script.google.com/macros/s/AKfycbzEEZZnZJK1BEXlCk81ogi0Aa7MFGunOkjS5s2CCDIZPSkHq0OtPAcEBLrkXp-fpb8aaQ/exec?type=formClient">
+<h2>Demande : Visite bénévole</h2>
+<label>🔒 Mot de passe</label>
+<input type="password" name="password" required>
+<label>👤 Prénom</label>
+<input type="text" name="prenom" required>
+
+<label>👤 Nom</label>
+<input type="text" name="nom" required>
+
+<label>🏠 Adresse complète</label>
+<input type="text" name="adresse" required>
+
+<label>📧 Email</label>
+<input type="email" name="email" required>
+
+<label>🛎️ Nature du service</label>
+<input type="text" name="service" value="Visite bénévole" readonly>
+
+<label>📅 Date souhaitée</label>
+<input type="date" name="date" required>
+
+<label>⏰ Heure de passage souhaitée</label>
+<input type="time" name="heure" required>
+
+<label>🔽 Choisir un prestataire (optionnel)</label>
+<select name="prestataire" id="select-prestataire-benevole">
+<option value="" selected>Pas de préférence</option>
+</select>
+
+<label>📝 Commentaire</label>
+<textarea name="commentaire"></textarea>
+
+<button type="submit">Envoyer la demande</button>
+</form>
+</div>
+</div>
+
+<!-- Modale : Commande de repas -->
+<div id="modal-repas" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal('modal-repas')">&times;</span>
+<form name="form-repas" method="POST" action="https://script.google.com/macros/s/AKfycbzEEZZnZJK1BEXlCk81ogi0Aa7MFGunOkjS5s2CCDIZPSkHq0OtPAcEBLrkXp-fpb8aaQ/exec?type=formClient">
+<h2>Demande : Commande de repas</h2>
+<label>🔒 Mot de passe</label>
+<input type="password" name="password" required>
+<label>👤 Prénom</label>
+<input type="text" name="prenom" required>
+
+<label>👤 Nom</label>
+<input type="text" name="nom" required>
+
+<label>🏠 Adresse complète</label>
+<input type="text" name="adresse" required>
+
+<label>📧 Email</label>
+<input type="email" name="email" required>
+
+<label>🛎️ Nature du service</label>
+<input type="text" name="service" value="Commande de repas" readonly>
+
+<label>📅 Date souhaitée</label>
+<input type="date" name="date" required>
+
+<label>⏰ Heure de passage souhaitée</label>
+<input type="time" name="heure" required>
+
+<label>🔽 Choisir un prestataire (optionnel)</label>
+<select name="prestataire" id="select-prestataire-repas">
+<option value="" selected>Pas de préférence</option>
+</select>
+
+<label>📝 Commentaire</label>
+<textarea name="commentaire"></textarea>
+
+<button type="submit">Envoyer la demande</button>
+</form>
+</div>
+</div>
+
+Embed 2
+<style>
+body {
+font-family: 'Inter', sans-serif;
+background-color: #fdfaf6;
+margin: 0;
+padding: 0;
+color: #1e1e1e;
+font-size: 1.2rem;
+line-height: 1.7;
+}
+
+h1, h2, h3 {
+font-weight: 700;
+color: #1e1e1e;
+}
+.btn-presta {
+display: inline-block;
+padding: 14px 28px;
+background-color: #006E90;
+color: #fff;
+font-size: 1.2rem;
+font-weight: 600;
+border: none;
+border-radius: 50px;
+text-decoration: none;
+transition: background-color 0.3s ease;
+box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.btn-presta:hover {
+background-color: #004e66;
+}
+
+.grid-container {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+gap: 40px;
+max-width: 1200px;
+margin: 60px auto;
+padding: 0 20px;
+}
+
+.card {
+background-color: rgba(255, 255, 255, 0.85);
+border: 2px solid #dbe3e7;
+border-radius: 16px;
+box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+padding: 30px;
+text-align: center;
+cursor: pointer;
+transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+transform: scale(1.02);
+box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+.card img {
+width: 100px;
+height: 100px;
+margin-bottom: 20px;
+border-radius: 16px;
+}
+
+.card h3 {
+font-size: 1.4rem;
+margin-bottom: 10px;
+}
+
+.card p {
+font-size: 1.1rem;
+color: #444;
+}
+
+.modal {
+display: none;
+position: fixed;
+z-index: 9999;
+left: 0;
+top: 0;
+width: 100%;
+height: 100%;
+overflow: auto;
+background-color: rgba(0,0,0,0.6);
+padding-top: 60px;
+}
+
+.modal-content {
+background-color: #ffffff;
+margin: auto;
+padding: 40px;
+width: 90%;
+max-width: 600px;
+border-radius: 14px;
+box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+position: relative;
+}
+
+.close {
+position: absolute;
+top: 15px;
+right: 20px;
+font-size: 32px;
+color: #666;
+cursor: pointer;
+}
+
+form label {
+display: block;
+font-weight: bold;
+margin-bottom: 6px;
+margin-top: 16px;
+}
+
+form input,
+form textarea,
+form select {
+width: 100%;
+padding: 14px;
+font-size: 1.1rem;
+border-radius: 8px;
+border: 1px solid #ccc;
+margin-top: 6px;
+}
+
+form input:focus,
+form textarea:focus,
+form select:focus {
+outline: none;
+border-color: #006E90;
+box-shadow: 0 0 0 3px rgba(0, 110, 144, 0.2);
+}
+
+form button {
+display: block;
+width: 100%;
+background-color: #006E90;
+color: white;
+font-size: 1.2rem;
+font-weight: bold;
+padding: 14px;
+border: none;
+border-radius: 10px;
+cursor: pointer;
+margin-top: 24px;
+transition: background-color 0.3s ease;
+}
+
+form button:hover {
+background-color: #004e66;
+}
+
+/* Responsive simplifié */
+@media (max-width: 600px) {
+body {
+font-size: 1.1rem;
+}
+
+.card img {
+width: 80px;
+height: 80px;
+}
+
+form button {
+font-size: 1.1rem;
+padding: 12px;
+}
+}
+</style>
+
+Embed 3
+document.addEventListener("DOMContentLoaded", function () {
+// URL de base de ton script Google Apps Script (à remplacer si besoin)
+const baseUrl = "https://script.google.com/macros/s/AKfycbzEEZZnZJK1BEXlCk81ogi0Aa7MFGunOkjS5s2CCDIZPSkHq0OtPAcEBLrkXp-fpb8aaQ/exec";
+
+// ... (vos fonctions openModal, closeModal, loadPrestataires) ...
+
+// Gestion des envois de formulaire (POST)
+document.querySelectorAll("form").forEach(form => {
+form.addEventListener("submit", async function (e) { // Utilisez 'async' ici
+e.preventDefault();
+
+// Utilisez directement l'URL de votre Apps Script pour le formulaire formClient
+const formUrl = `${baseUrl}?type=formClient`; // ou this.action si l'action du form a déjà le type=formClient
+
+const formData = new FormData(this);
+
+try {
+// SANS mode: "no-cors"
+const response = await fetch(formUrl, { // Utilisez formUrl ici
+method: "POST",
+body: formData,
+});
+
+// Vérifiez si la réponse est OK (status 200)
+if (!response.ok) {
+// Si le serveur a renvoyé un statut d'erreur HTTP (ex: 400, 500)
+let errorData = {};
+try {
+errorData = await response.json(); // Tentez de lire l'erreur JSON du serveur
+} catch (jsonErr) {
+// Impossible de lire le JSON de l'erreur
+console.error("Erreur: Impossible de parser la réponse JSON d'erreur:", jsonErr);
+}
+throw new Error(`Erreur serveur: ${response.status} - ${errorData.message || response.statusText}`);
+}
+
+// Si la réponse est OK, lisez le JSON du résultat
+const result = await response.json(); // Lire la réponse JSON de Apps Script
+
+if (result.success) {
+alert(`✅ ${result.message || "Demande envoyée avec succès !"}`);
+this.reset();
+const modal = this.closest(".modal");
+if (modal) closeModal(modal.id); // Appeler closeModal
+} else {
+// Le script Apps Script a renvoyé success: false
+alert(`⚠️ Problème: ${result.message || "Une erreur est survenue côté serveur."}`);
+console.error("Erreur Apps Script:", result.message, result.params);
+}
+
+} catch (err) {
+// Erreur réseau, CORS, ou erreur du code frontend/backend
+alert("❌ Problème de connexion ou erreur du formulaire : " + err.message);
+console.error("Erreur lors de l'envoi du formulaire:", err);
+}
+});
+});
+
+// Rendre les fonctions globales pour pouvoir les appeler dans le HTML
+window.openModal = openModal;
+window.closeModal = closeModal; // Assurez-vous que closeModal est bien définie et globale
+});
