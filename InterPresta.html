@@ -1,0 +1,220 @@
+Interface prestataire Carrd
+il y a 5 embeds voici le 1er <script>
+
+window.webAppUrl = "https://script.google.com/macros/s/AKfycbzEEZZnZJK1BEXlCk81ogi0Aa7MFGunOkjS5s2CCDIZPSkHq0OtPAcEBLrkXp-fpb8aaQ/exec";
+
+
+
+window.currentEmail = null;
+
+window.currentPrenom = null;
+
+window.currentNom = null;
+
+
+
+window.setPrestataireData = function(email, prenom, nom) {
+
+if (!email) {
+
+return;
+
+}
+
+
+
+if (typeof email === 'string' && email.includes('@')) {
+
+window.currentEmail = email;
+
+window.currentPrenom = prenom || '';
+
+window.currentNom = nom || '';
+
+console.log(`Prestataire connecté : ${window.currentPrenom} ${window.currentNom} (${window.currentEmail})`);
+
+} else {
+
+console.error("Erreur: L'email du prestataire fourni n'est pas valide (format incorrect).");
+
+}
+
+};
+
+</script> embeds 2 <div class="viiveo-login">
+
+<form id="loginForm" onsubmit="event.preventDefault();">
+
+<input type="email" id="email" placeholder="E-mail" required />
+
+<input type="password" id="password" placeholder="Mot de passe" required />
+
+<button type="submit">Connexion</button>
+
+<div id="message" style="color:red; margin-top:0.5em;"></div>
+
+</form>
+
+</div>
+
+
+
+<div class="viiveo-loader" style="display:none;">Chargement...</div>
+
+
+
+<div class="viiveo-missions" style="display:none;">
+
+<h3>Missions à valider</h3>
+
+<div id="missions-attente"></div>
+
+
+
+<h3>Missions à venir</h3>
+
+<div id="missions-a-venir"></div>
+
+
+
+<h3>Missions terminées</h3>
+
+<div id="missions-terminees"></div>
+
+</div>
+
+
+
+<style>
+
+/* Styles de base pour les cartes de mission pour assurer la visibilité */
+
+.mission-card {
+
+background-color: #ffffff; /* Fond blanc */
+
+border: 1px solid #e0e0e0; /* Bordure légère */
+
+padding: 1rem; /* Espacement interne */
+
+margin-bottom: 0.75rem; /* Marge en bas */
+
+border-radius: 0.5rem; /* Coins arrondis */
+
+box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* Ombre */
+
+width: 100%; /* Prend toute la largeur disponible */
+
+min-height: 100px; /* Hauteur minimale pour être visible */
+
+box-sizing: border-box; /* Inclure padding et border dans la largeur/hauteur */
+
+display: block; /* S'assurer qu'il est affiché comme un bloc */
+
+}
+
+
+
+/* Styles pour les boutons à l'intérieur des cartes si Tailwind n'est pas appliqué */
+
+.mission-card button {
+
+padding: 0.5rem 1rem;
+
+background-color: #3b82f6; /* Bleu */
+
+color: white;
+
+border-radius: 0.375rem; /* Coins arrondis */
+
+border: none;
+
+cursor: pointer;
+
+margin-top: 0.75rem;
+
+}
+
+
+
+.mission-card button:hover {
+
+background-color: #2563eb; /* Bleu plus foncé au survol */
+
+}
+
+
+
+/* Assurez-vous que les conteneurs des missions sont visibles */
+
+.viiveo-missions #missions-attente,
+
+.viiveo-missions #missions-a-venir,
+
+.viiveo-missions #missions-terminees {
+
+display: block; /* Force l'affichage des conteneurs */
+
+}
+
+</style> Embeds 3 <link rel="stylesheet" href="https://allo-les-anges.github.io/viiveo-tableauxviiveo-tableaux-prestataire/viiveo-styles.css">
+
+
+
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+
+
+<script src="https://allo-les-anges.github.io/viiveo-tableauxviiveo-tableaux-prestataire/viiveo-app.js"></script> Embeds 4 <a href="https://viiveo.carrd.co/" class="menu-bubble" aria-label="Accueil">
+
+<i class="fas fa-home"></i> </a> Embeds 5 <footer>
+
+<img src="https://i.postimg.cc/VNqjxcQX/logo-viiveo-2.png" alt="viiveo Logo">
+
+
+
+<div class="contact-info">
+
+<p>info@viiveo.com</p>
+
+<p>+32 475 32 51 27</p>
+
+</div>
+
+
+
+<div class="social-icons">
+
+<a href="https://www.facebook.com/viiveo.be?locale=fr_FR" target="_blank">
+
+<i class="fab fa-facebook" style="color: #3b5998;"></i>
+
+</a>
+
+<a href="https://www.linkedin." target="_blank">
+
+<i class="fab fa-linkedin" style="color: #0077b5;"></i>
+
+</a>
+
+<a href="https://wa.me/+32475325127" target="_blank">
+
+<i class="fab fa-whatsapp" style="color: #25D366;"></i>
+
+</a>
+
+</div>
+
+
+
+<hr>
+
+
+
+<p class="copyright">
+
+Copyright © Viiveo 2025
+
+</p>
+
+</footer>
