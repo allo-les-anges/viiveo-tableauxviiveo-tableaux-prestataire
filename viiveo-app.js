@@ -630,7 +630,7 @@ function renderTable(missions, type = "") {
             // --- DÉBUT MODIFICATION ICI ---
             html += `<td data-label="Actions" class="actions">
             <button class="btn-action btn-start" data-mission-id="${m.id}" data-client-prenom="${m.clientPrenom || ''}" data-client-nom="${m.clientNom || ''}" data-action-type="start">▶️</button>
-            <button class="btn-action btn-cloturer" data-mission-id="${m.id}" data-action-type="cloturer">Clôturer</button>
+            <button class="btn-action btn-cloturer" data-mission-id="${m.id}" data-action-type="cloturer">🏁</button>
             </td>`;
             // --- FIN MODIFICATION ICI ---
         }
