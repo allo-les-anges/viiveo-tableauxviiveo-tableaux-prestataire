@@ -522,15 +522,18 @@ window.login = async function() {
 
 window.loadMissions = async function(emailToLoad) {
     const contAttente = document.getElementById("missions-attente");
-    const contAvenir = document.getElementById("missions-a-venir");
+    const contAvenir = document.getElementById("missions-a-venir"); // Missions planifiées (confirmées/validées)
+    const contEnCours = document.getElementById("missions-en-cours"); // NOUVEAU : Conteneur pour missions en cours
     const contTerminees = document.getElementById("missions-terminees");
-    if (!contAttente || !contAvenir || !contTerminees) {
+
+    if (!contAttente || !contAvenir || !contEnCours || !contTerminees) { // Mettre à jour la vérification
         console.warn("Conteneurs de missions non trouvés. Impossible de charger les missions.");
         return;
     }
 
     contAttente.innerHTML = "Chargement...";
     contAvenir.innerHTML = "Chargement...";
+    contEnCours.innerHTML = "Chargement..."; // NOUVEAU
     contTerminees.innerHTML = "Chargement...";
 
     try {
@@ -540,9 +543,10 @@ window.loadMissions = async function(emailToLoad) {
             alert("Erreur de configuration: URL de l'application manquante pour charger les missions.");
             return;
         }
+        // Appel à votre routeur doGet avec le type missionspresta
         const url = `${window.webAppUrl}?type=missionspresta&email=${encodeURIComponent(emailToLoad)}`;
         console.log("LOAD MISSIONS: URL d'API générée:", url);
-        const data = await window.callApiJsonp(url, callbackName); // Utilisation de window.callApiJsonp
+        const data = await window.callApiJsonp(url, callbackName);
         console.log("LOAD MISSIONS: Réponse de l'API des missions:", data);
 
         if (!data.success || !Array.isArray(data.missions)) {
@@ -552,13 +556,15 @@ window.loadMissions = async function(emailToLoad) {
         }
 
         const missions = data.missions;
-        const missionsAttente = missions.filter(m => m.statut === "en attente");
-        const missionsValidees = missions.filter(m => m.statut === "confirmée" || m.statut === "validée");
-        const missionsTerminees = missions.filter(m => m.statut === "terminée");
+        const missionsAttente = missions.filter(m => m.statut && String(m.statut).toLowerCase() === "en attente");
+        const missionsValidees = missions.filter(m => m.statut && (String(m.statut).toLowerCase() === "confirmée" || String(m.statut).toLowerCase() === "validée"));
+        const missionsEnCours = missions.filter(m => m.statut && String(m.statut).toLowerCase() === "en cours"); // NOUVEAU FILTRE
+        const missionsTerminees = missions.filter(m => m.statut && (String(m.statut).toLowerCase() === "terminée" || String(m.statut).toLowerCase() === "clôturée")); // Ajout de clôturée pour cohérence
 
         contAttente.innerHTML = renderTable(missionsAttente, 'attente');
         contAvenir.innerHTML = renderTable(missionsValidees, 'validee');
-        contTerminees.innerHTML = renderTable(missionsTerminees, '');
+        contEnCours.innerHTML = renderTable(missionsEnCours, 'enCours'); // NOUVEAU RENDU
+        contTerminees.innerHTML = renderTable(missionsTerminees, 'terminee'); // Vous pouvez ajouter un type pour les terminées si besoin d'actions spécifiques
 
         // NOUVEAU: Attacher les écouteurs d'événements après le rendu des tableaux
         attachMissionButtonListeners();
@@ -573,7 +579,9 @@ window.loadMissions = async function(emailToLoad) {
 function renderTable(missions, type = "") {
     if (!missions.length) return "<p>Aucune mission.</p>";
     let html = `<table class="missions-table"><thead><tr><th>ID</th><th>Client</th><th>Adresse</th><th>Service</th><th>Date</th><th>Heure</th>`;
-    if (type) html += "<th>Actions</th>";
+    if (type === "attente" || type === "validee" || type === "enCours") { // Afficher "Actions" seulement si des actions sont possibles
+        html += "<th>Actions</th>";
+    }
     html += "</tr></thead><tbody>";
 
     missions.forEach(m => {
@@ -621,26 +629,29 @@ function renderTable(missions, type = "") {
             <td data-label="Service">${m.service || 'N/A'}</td>
             <td data-label="Date">${displayDate}</td>
             <td data-label="Heure">${formattedHeure}</td>`;
+
         if (type === "attente") {
             html += `<td data-label="Actions" class="actions">
             <button class="btn-action btn-validate" data-mission-id="${m.id}" data-action-type="validate">✅</button>
             <button class="btn-action btn-refuse" data-mission-id="${m.id}" data-action-type="refuse">❌</button>
             </td>`;
-        } else if (type === "validee") {
-            // --- DÉBUT MODIFICATION ICI ---
+        } else if (type === "validee") { // Missions planifiées : Seul le bouton Démarrer apparaît
             html += `<td data-label="Actions" class="actions">
-            <button class="btn-action btn-start" data-mission-id="${m.id}" data-client-prenom="${m.clientPrenom || ''}" data-client-nom="${m.clientNom || ''}" data-action-type="start">▶️</button>
-            <button class="btn-action btn-cloturer" data-mission-id="${m.id}" data-action-type="cloturer">🏁</button>
+            <button class="btn-action btn-start" data-mission-id="${m.id}" data-client-prenom="${m.clientPrenom || ''}" data-client-nom="${m.clientNom || ''}" data-action-type="start">▶️ Démarrer</button>
             </td>`;
-            // --- FIN MODIFICATION ICI ---
+        } else if (type === "enCours") { // Missions en cours : Seul le bouton Clôturer apparaît
+            html += `<td data-label="Actions" class="actions">
+            <button class="btn-action btn-cloturer" data-mission-id="${m.id}" data-action-type="cloturer">🏁 Clôturer</button>
+            </td>`;
         }
+        // Pour type === "terminee", aucune action n'est ajoutée ici, ce qui est le comportement souhaité.
+
         html += "</tr>";
     });
 
     html += "</tbody></table>";
     return html;
 }
-
 // Assurez-vous que cette fonction est appelée après le rendu des tableaux.
 // Elle est déjà appelée dans votre window.loadMissions.
 function attachMissionButtonListeners() {
