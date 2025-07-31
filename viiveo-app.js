@@ -474,7 +474,7 @@ window.login = async function() {
     const email = document.getElementById("email")?.value.trim();
     const password = document.getElementById("password")?.value.trim();
     const message = document.getElementById("message");
-    const loader = document.querySelector(".viiveo-loader");
+    const loader = document.getElementById("loader");
     const form = document.querySelector(".viiveo-login");
     const missionsBlock = document.querySelector(".viiveo-missions");
 
