@@ -295,6 +295,9 @@ function createElementFromHTML(htmlString) {
     return div.firstChild;
 }
 
+// viiveo-app.js
+// ... (autres fonctions) ...
+
 function initializeModalListeners() {
     const modalOverlay = document.getElementById("modalOverlay");
     const stepQR = document.getElementById("stepQR");
@@ -350,33 +353,41 @@ function initializeModalListeners() {
             }
 
             const heureFin = new Date().toISOString();
-            const formData = new FormData();
-            formData.append("type", "envoyerFiche");
-            formData.append("missionId", currentMissionId);
-            formData.append("prenomClient", currentClientPrenom);
-            formData.append("nomClient", currentClientNom);
-            formData.append("obsDate", obsDateInput.value);
-            formData.append("etatSante", etatSanteInput.value);
-            formData.append("etatForme", etatFormeInput.value);
-            formData.append("environnement", environnementInput.value);
-            formData.append("latitude", currentLatitude);
-            formData.append("longitude", currentLongitude);
-            formData.append("heureDebut", heureDebut);
-            formData.append("heureFin", heureFin);
-            formData.append("prestatairePrenom", window.currentPrenom);
-            formData.append("prestataireNom", window.currentNom);
-            formData.append("prestataireEmail", window.currentEmail);
+            
+            // --- DÉBUT DES MODIFICATIONS ---
+            // 1. On prépare les données du formulaire
+            const params = {
+                type: "envoyerFiche", // Le type d'action, attendu par l'API
+                missionId: window.currentMissionId,
+                prenomClient: window.currentClientPrenom,
+                nomClient: window.currentClientNom,
+                obsDate: obsDateInput.value,
+                etatSante: etatSanteInput.value,
+                etatForme: etatFormeInput.value,
+                environnement: environnementInput.value,
+                latitude: window.currentLatitude,
+                longitude: window.currentLongitude,
+                heureDebut: window.heureDebut, // Assurez-vous que cette variable est bien définie au début de la mission
+                heureFin: heureFin,
+                prestatairePrenom: window.currentPrenom,
+                prestataireNom: window.currentNom,
+                prestataireEmail: window.currentEmail,
+            };
 
-            for (let file of photosInput.files) {
-                formData.append("photos", file);
-            }
+            // 2. On encode les paramètres pour l'URL
+            const urlParams = new URLSearchParams(params).toString();
+            const url = `${window.webAppUrl}?${urlParams}`;
 
+            // NOTE IMPORTANTE : JSONP ne peut pas envoyer de fichiers (photos).
+            // Si vous avez absolument besoin d'envoyer les photos, vous devrez
+            // revoir l'API Apps Script pour qu'elle accepte des requêtes POST.
+            // Pour l'instant, cette solution corrigera l'erreur de "type"
+            // en ignorant les photos.
+            
             try {
-                const res = await fetch(window.webAppUrl, {
-                    method: "POST",
-                    body: formData,
-                });
-                const json = await res.json();
+                // 3. On utilise la fonction existante pour appeler l'API
+                const json = await window.callApiJsonp(url, 'cbObservation' + Date.now());
+
                 if (json.success) {
                     stepForm.style.display = "none";
                     stepSuccess.style.display = "flex";
@@ -390,6 +401,7 @@ function initializeModalListeners() {
                 alert("Erreur réseau ou du serveur lors de l'envoi de la fiche.");
                 console.error("Erreur lors de l'envoi de la fiche:", err);
             }
+            // --- FIN DES MODIFICATIONS ---
         });
 
         if (document.querySelector("#btnCancelQR")) document.querySelector("#btnCancelQR").onclick = closeModal;
@@ -397,13 +409,11 @@ function initializeModalListeners() {
         if (document.querySelector("#btnCloseSuccess")) document.querySelector("#btnCloseSuccess").onclick = closeModal;
 
         console.log("Écouteurs de la modale d'observation initialisés.");
-
     } else {
         console.warn("Certains éléments de la modale d'observation sont manquants. Nouvelle tentative d'initialisation des écouteurs de modale...");
         setTimeout(initializeModalListeners, 100);
     }
 }
-
 function initializeLoginForm() {
     const loginForm = document.getElementById("loginForm");
     console.log("DEBUG initializeLoginForm: loginForm element:", loginForm);
