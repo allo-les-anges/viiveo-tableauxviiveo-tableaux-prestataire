@@ -696,6 +696,8 @@ function renderTable(missions, type = "") {
 }
 // Assurez-vous que cette fonction est appelée après le rendu des tableaux.
 // Elle est déjà appelée dans votre window.loadMissions.
+// Assurez-vous que cette fonction est appelée après le rendu des tableaux.
+// Elle est déjà appelée dans votre window.loadMissions.
 function attachMissionButtonListeners() {
     // Écouteurs pour les boutons de validation/refus (missions en attente)
     document.querySelectorAll('.btn-validate').forEach(button => {
@@ -708,7 +710,7 @@ function attachMissionButtonListeners() {
             const response = await window.callApiJsonp(url, 'cbValidate' + Date.now());
             if (response.success) {
                 alert(`Mission ${missionId} validée avec succès !`);
-                window.loadMissions(window.currentPrestataireEmail); // Recharger les missions
+                window.loadMissions(window.currentEmail); // Recharger les missions avec window.currentEmail
             } else {
                 alert(`Erreur lors de la validation de la mission ${missionId}: ${response.message}`);
             }
@@ -725,7 +727,7 @@ function attachMissionButtonListeners() {
             const response = await window.callApiJsonp(url, 'cbRefuse' + Date.now());
             if (response.success) {
                 alert(`Mission ${missionId} refusée avec succès.`);
-                window.loadMissions(window.currentPrestataireEmail); // Recharger les missions
+                window.loadMissions(window.currentEmail); // Recharger les missions avec window.currentEmail
             } else {
                 alert(`Erreur lors du refus de la mission ${missionId}: ${response.message}`);
             }
@@ -734,58 +736,36 @@ function attachMissionButtonListeners() {
 
     // Écouteur pour le bouton "Start" (missions validées)
     document.querySelectorAll('.btn-start').forEach(button => {
-        button.onclick = async function() {
+        button.onclick = function() { // Reste synchrone pour ouvrir la modale
             const missionId = this.dataset.missionId;
             const clientPrenom = this.dataset.clientPrenom;
             const clientNom = this.dataset.clientNom;
-            // Ici, vous devriez appeler une fonction Apps Script pour marquer la mission comme "en cours"
-            // et enregistrer l'heure de début réelle et la géolocalisation de début.
             console.log(`Démarrage de la mission ${missionId} pour ${clientPrenom} ${clientNom}`);
 
-            // --- NOUVELLE LOGIQUE POUR DÉMARRER LA MISSION ET ENREGISTRER L'HEURE DE DÉBUT ---
-            // Vous aurez besoin d'une nouvelle fonction Apps Script côté backend, par exemple `startMissionAndRecordTime`
-            // qui prendra l'ID de mission, l'heure actuelle, et la géolocalisation de début.
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(async function(position) {
-                    const latitude = position.coords.latitude;
-                    const longitude = position.coords.longitude;
-                    const heureDebutReelle = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-
-                    const url = `${window.webAppUrl}?type=startmission&missionId=${encodeURIComponent(missionId)}&heureDebut=${encodeURIComponent(heureDebutReelle)}&latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`;
-                    const response = await window.callApiJsonp(url, 'cbStart' + Date.now());
-
-                    if (response.success) {
-                        alert(`Mission ${missionId} démarrée. Heure de début enregistrée.`);
-                        window.loadMissions(window.currentPrestataireEmail); // Recharger les missions
-                    } else {
-                        alert(`Erreur lors du démarrage de la mission ${missionId}: ${response.message}`);
-                    }
-                }, function(error) {
-                    alert("Impossible d'obtenir la géolocalisation pour démarrer la mission. Veuillez l'activer.");
-                    console.error("Erreur de géolocalisation au démarrage : ", error);
-                });
-            } else {
-                alert("Votre navigateur ne supporte pas la géolocalisation. Impossible de démarrer la mission.");
-            }
-            // --- FIN NOUVELLE LOGIQUE ---
+            // Appel de la fonction openModalStartPrestation existante
+            window.openModalStartPrestation(missionId, clientPrenom, clientNom);
         };
     });
 
-    // --- NOUVEL ÉCOUTEUR POUR LE BOUTON "CLÔTURER" ---
+    // --- ÉCOUTEUR POUR LE BOUTON "CLÔTURER" ---
     document.querySelectorAll('.btn-cloturer').forEach(button => {
-        button.onclick = async function() {
+        button.onclick = function() {
             const missionId = this.dataset.missionId;
+            // Assurez-vous d'avoir ces données disponibles si elles sont nécessaires pour le formulaire d'observation
+            // Pour l'instant, openModalStartPrestation attend clientPrenom et clientNom
+            // Si ces infos ne sont pas sur le bouton clôturer, elles devront être récupérées d'une autre manière (par ex. depuis currentClientPrenom/Nom si déjà mis à jour, ou via un appel API)
+            // Pour l'exemple, je les récupère du dataset si elles y sont (idéalement, elles devraient l'être pour être cohérent avec le btn-start)
+            const clientPrenom = this.dataset.clientPrenom || ''; // Récupérer le prénom du client
+            const clientNom = this.dataset.clientNom || '';     // Récupérer le nom du client
+
             console.log(`Clôture de la mission ${missionId}`);
 
-            // Rediriger vers l'URL de l'application web qui sert 'ObservationForm.html'
-            // en utilisant votre routeur doGet avec un type spécifique.
-            // window.webAppUrl est l'URL de votre script Apps Script principal.
-            // Le paramètre "type=showobservationform" dira à votre doGet de servir la page.
-            // L'ID de mission est passé en paramètre d'URL.
-            window.location.href = `${window.webAppUrl}?type=showobservationform&missionId=${encodeURIComponent(missionId)}`;
+            // Appeler openModalStartPrestation pour lancer le processus de QR et formulaire
+            // En passant l'ID de mission, et les informations du client (même si le QR ne sera pas scanné pour la fin, le processus est le même)
+            window.openModalStartPrestation(missionId, clientPrenom, clientNom);
         };
     });
-    // --- FIN NOUVEL ÉCOUTEUR ---
+    // --- FIN ÉCOUTEUR ---
 }
 // Fonctions de gestion des clics (maintenant appelées par addEventListener)
 async function handleValidateMission(event) {
