@@ -38,7 +38,7 @@ window.openModalStartPrestation = function(missionId, clientPrenom, clientNom) {
         return;
     }
 
-    currentMissionId = missionId;
+    window.currentMissionId = missionId;
     // Assurez-vous que clientPrenom et clientNom sont bien passés depuis le bouton
     currentClientPrenom = clientPrenom || ""; // Définit à "" si undefined
     currentClientNom = clientNom || ""; // Définit à "" si undefined
