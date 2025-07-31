@@ -678,14 +678,14 @@ function renderTable(missions, type = "") {
             <button class="btn-action btn-refuse" data-mission-id="${m.id}" data-action-type="refuse">❌</button>
             </td>`;
         } else if (type === "validee") { // Missions planifiées : Seul le bouton Démarrer apparaît
-            html += `<td data-label="Actions" class="actions">
-            <button class="btn-action btn-start" data-mission-id="${m.id}" data-client-prenom="${m.clientPrenom || ''}" data-client-nom="${m.clientNom || ''}" data-action-type="start">▶️ Démarrer</button>
-            </td>`;
-        } else if (type === "enCours") { // Missions en cours : Seul le bouton Clôturer apparaît
-            html += `<td data-label="Actions" class="actions">
-            <button class="btn-action btn-cloturer" data-mission-id="${m.id}" data-action-type="cloturer">🏁 Clôturer</button>
-            </td>`;
-        }
+    html += `<td data-label="Actions" class="actions">
+    <button class="btn-action btn-start" data-mission-id="${m.id}" data-client-prenom="${m.clientPrenom || ''}" data-client-nom="${m.clientNom || ''}" data-action-type="start">▶️</button>
+    </td>`;
+} else if (type === "enCours") { // Missions en cours : Seul le bouton Clôturer apparaît
+    html += `<td data-label="Actions" class="actions">
+    <button class="btn-action btn-cloturer" data-mission-id="${m.id}" data-client-prenom="${m.clientPrenom || ''}" data-client-nom="${m.clientNom || ''}" data-action-type="cloturer">🏁</button>
+    </td>`;
+}
         // Pour type === "terminee", aucune action n'est ajoutée ici, ce qui est le comportement souhaité.
 
         html += "</tr>";
