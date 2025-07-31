@@ -520,20 +520,41 @@ window.login = async function() {
     }
 };
 
+/**
+ * Charge et affiche les missions pour le prestataire donné, en les catégorisant
+ * par statut (en attente, planifiées, en cours, terminées).
+ * Gère également l'affichage du loader et des conteneurs de missions.
+ *
+ * @param {string} emailToLoad L'adresse email du prestataire pour laquelle charger les missions.
+ */
 window.loadMissions = async function(emailToLoad) {
+    // 1. Récupération des conteneurs DOM
     const contAttente = document.getElementById("missions-attente");
-    const contAvenir = document.getElementById("missions-a-venir"); // Missions planifiées (confirmées/validées)
+    const contAvenir = document.getElementById("missions-a-venir");
     const contEnCours = document.getElementById("missions-en-cours"); // NOUVEAU : Conteneur pour missions en cours
     const contTerminees = document.getElementById("missions-terminees");
 
-    if (!contAttente || !contAvenir || !contEnCours || !contTerminees) { // Mettre à jour la vérification
-        console.warn("Conteneurs de missions non trouvés. Impossible de charger les missions.");
+    // Conteneur parent pour tous les tableaux de missions (pour masquer/afficher d'un coup)
+    const mainMissionsDisplay = document.getElementById("main-missions-display");
+    // Le loader global
+    const globalLoader = document.getElementById("global-loader");
+
+    // Vérification que tous les conteneurs nécessaires existent
+    if (!contAttente || !contAvenir || !contEnCours || !contTerminees || !mainMissionsDisplay || !globalLoader) {
+        console.error("LOAD MISSIONS ERROR: Un ou plusieurs conteneurs de missions/loader sont introuvables dans le DOM.");
+        // Gérer cette erreur visiblement pour l'utilisateur si possible
+        alert("Erreur d'affichage : Impossible de trouver tous les éléments de l'interface.");
         return;
     }
 
+    // 2. Afficher le loader et masquer les conteneurs de missions au début du chargement
+    globalLoader.style.display = 'block';
+    mainMissionsDisplay.style.display = 'none';
+
+    // Afficher des messages "Chargement..." dans chaque section (facultatif si le loader global suffit)
     contAttente.innerHTML = "Chargement...";
     contAvenir.innerHTML = "Chargement...";
-    contEnCours.innerHTML = "Chargement..."; // NOUVEAU
+    contEnCours.innerHTML = "Chargement...";
     contTerminees.innerHTML = "Chargement...";
 
     try {
@@ -541,41 +562,62 @@ window.loadMissions = async function(emailToLoad) {
         if (!window.webAppUrl) {
             console.error("LOAD MISSIONS ERROR: window.webAppUrl n'est pas défini !");
             alert("Erreur de configuration: URL de l'application manquante pour charger les missions.");
+            // Cacher le loader et afficher un message d'erreur persistant si l'URL manque
+            globalLoader.style.display = 'none';
+            mainMissionsDisplay.innerHTML = "<p class='error-message'>Erreur de configuration: URL de l'application manquante.</p>";
+            mainMissionsDisplay.style.display = 'block';
             return;
         }
-        // Appel à votre routeur doGet avec le type missionspresta
+
+        // 3. Appel de l'API backend pour récupérer les missions
         const url = `${window.webAppUrl}?type=missionspresta&email=${encodeURIComponent(emailToLoad)}`;
         console.log("LOAD MISSIONS: URL d'API générée:", url);
         const data = await window.callApiJsonp(url, callbackName);
         console.log("LOAD MISSIONS: Réponse de l'API des missions:", data);
 
+        // 4. Traitement de la réponse de l'API
         if (!data.success || !Array.isArray(data.missions)) {
             alert("Erreur lors du chargement des missions.");
             console.warn("LOAD MISSIONS: Données de missions invalides ou échec.", data);
+            // Cacher le loader et afficher un message d'erreur
+            globalLoader.style.display = 'none';
+            mainMissionsDisplay.innerHTML = `<p class='error-message'>${data.message || 'Erreur lors du chargement des missions.'}</p>`;
+            mainMissionsDisplay.style.display = 'block';
             return;
         }
 
+        // 5. Filtrage des missions par statut
         const missions = data.missions;
         const missionsAttente = missions.filter(m => m.statut && String(m.statut).toLowerCase() === "en attente");
         const missionsValidees = missions.filter(m => m.statut && (String(m.statut).toLowerCase() === "confirmée" || String(m.statut).toLowerCase() === "validée"));
-        const missionsEnCours = missions.filter(m => m.statut && String(m.statut).toLowerCase() === "en cours"); // NOUVEAU FILTRE
-        const missionsTerminees = missions.filter(m => m.statut && (String(m.statut).toLowerCase() === "terminée" || String(m.statut).toLowerCase() === "clôturée")); // Ajout de clôturée pour cohérence
+        const missionsEnCours = missions.filter(m => m.statut && String(m.statut).toLowerCase() === "en cours");
+        const missionsTerminees = missions.filter(m => m.statut && (String(m.statut).toLowerCase() === "terminée" || String(m.statut).toLowerCase() === "clôturée"));
 
+        // 6. Rendu des tableaux dans leurs conteneurs respectifs
         contAttente.innerHTML = renderTable(missionsAttente, 'attente');
         contAvenir.innerHTML = renderTable(missionsValidees, 'validee');
-        contEnCours.innerHTML = renderTable(missionsEnCours, 'enCours'); // NOUVEAU RENDU
-        contTerminees.innerHTML = renderTable(missionsTerminees, 'terminee'); // Vous pouvez ajouter un type pour les terminées si besoin d'actions spécifiques
+        contEnCours.innerHTML = renderTable(missionsEnCours, 'enCours');
+        contTerminees.innerHTML = renderTable(missionsTerminees, 'terminee');
 
-        // NOUVEAU: Attacher les écouteurs d'événements après le rendu des tableaux
+        // 7. Attacher les écouteurs d'événements aux boutons nouvellement rendus
         attachMissionButtonListeners();
 
+        // 8. Masquer le loader et afficher les conteneurs de missions après le succès
+        globalLoader.style.display = 'none';
+        mainMissionsDisplay.style.display = 'block';
+
         console.log("LOAD MISSIONS: Tableaux de missions rendus et écouteurs attachés avec succès.");
+
     } catch (e) {
+        // 9. Gestion des erreurs lors de l'appel API ou du traitement
         alert("Erreur serveur lors du chargement des missions.");
         console.error("LOAD MISSIONS ERROR: Erreur dans loadMissions():", e);
+        // Cacher le loader et afficher un message d'erreur
+        globalLoader.style.display = 'none';
+        mainMissionsDisplay.innerHTML = `<p class='error-message'>Erreur lors du chargement des missions: ${e.message}</p>`;
+        mainMissionsDisplay.style.display = 'block';
     }
-}
-
+};
 function renderTable(missions, type = "") {
     if (!missions.length) return "<p>Aucune mission.</p>";
     let html = `<table class="missions-table"><thead><tr><th>ID</th><th>Client</th><th>Adresse</th><th>Service</th><th>Date</th><th>Heure</th>`;
