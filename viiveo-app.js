@@ -577,23 +577,21 @@ function renderTable(missions, type = "") {
     html += "</tr></thead><tbody>";
 
     missions.forEach(m => {
-        // Correction pour l'heure NaNhNaN: Combinaison de date et heure
         let formattedHeure = "N/A";
         let displayDate = "Date inconnue";
 
         if (m.date) {
-            // Tente de convertir la date au format YYYY-MM-DD si elle est en DD/MM/YYYY
             const parts = String(m.date).split('/');
-            let isoDate = String(m.date); // Par défaut, utilise la date telle quelle
+            let isoDate = String(m.date);
 
             if (parts.length === 3) {
-                isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`; // Convertit en YYYY-MM-DD
+                isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
             }
 
             try {
                 const dateObj = new Date(isoDate);
-                if (!isNaN(dateObj.getTime())) { // Vérifie si la date est valide
-                    displayDate = dateObj.toLocaleDateString('fr-FR'); // Pour l'affichage
+                if (!isNaN(dateObj.getTime())) {
+                    displayDate = dateObj.toLocaleDateString('fr-FR');
                 }
             } catch (e) {
                 console.warn("Erreur de parsing de la date pour la mission", m.id, e);
@@ -601,10 +599,9 @@ function renderTable(missions, type = "") {
 
             if (m.heure) {
                 try {
-                    // Combine la date ISO avec l'heure pour une parsing robuste
                     const dateTimeString = `${isoDate}T${m.heure}`;
                     const fullDate = new Date(dateTimeString);
-                    if (!isNaN(fullDate.getTime())) { // Vérifie si la date/heure est valide
+                    if (!isNaN(fullDate.getTime())) {
                         formattedHeure = `${String(fullDate.getHours()).padStart(2, '0')}h${String(fullDate.getMinutes()).padStart(2, '0')}`;
                     } else {
                         console.warn("Failed to parse full date/time for mission", m.id, dateTimeString);
@@ -615,9 +612,7 @@ function renderTable(missions, type = "") {
             }
         }
 
-        // Correction pour "Client indéfini": Utilise m.client ou un fallback
         const clientName = m.client && String(m.client).trim() !== "" ? String(m.client) : "Client inconnu";
-
 
         html += `<tr>
             <td data-label="ID">${m.id || 'N/A'}</td>
@@ -632,9 +627,12 @@ function renderTable(missions, type = "") {
             <button class="btn-action btn-refuse" data-mission-id="${m.id}" data-action-type="refuse">❌</button>
             </td>`;
         } else if (type === "validee") {
+            // --- DÉBUT MODIFICATION ICI ---
             html += `<td data-label="Actions" class="actions">
             <button class="btn-action btn-start" data-mission-id="${m.id}" data-client-prenom="${m.clientPrenom || ''}" data-client-nom="${m.clientNom || ''}" data-action-type="start">▶️</button>
+            <button class="btn-action btn-cloturer" data-mission-id="${m.id}" data-action-type="cloturer">Clôturer</button>
             </td>`;
+            // --- FIN MODIFICATION ICI ---
         }
         html += "</tr>";
     });
