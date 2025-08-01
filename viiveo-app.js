@@ -59,8 +59,6 @@ window.openModalStartPrestation = function(missionId, clientPrenom, clientNom) {
     }, 50);
 }
 
-window.openModalStartPrestation = function(missionId, clientPrenom, clientNom) {
-
 window.openModalCloturerPrestation = function(missionId, clientPrenom, clientNom) {
     console.log(`Ouverture de la modale pour la clôture de la mission ${missionId}`);
     
