@@ -789,21 +789,16 @@ function attachMissionButtonListeners() {
     });
 
     // --- ÉCOUTEUR POUR LE BOUTON "CLÔTURER" ---
+    // Écouteur pour les boutons "Clôturer" (missions en cours)
     document.querySelectorAll('.btn-cloturer').forEach(button => {
         button.onclick = function() {
             const missionId = this.dataset.missionId;
-            // Assurez-vous d'avoir ces données disponibles si elles sont nécessaires pour le formulaire d'observation
-            // Pour l'instant, openModalStartPrestation attend clientPrenom et clientNom
-            // Si ces infos ne sont pas sur le bouton clôturer, elles devront être récupérées d'une autre manière (par ex. depuis currentClientPrenom/Nom si déjà mis à jour, ou via un appel API)
-            // Pour l'exemple, je les récupère du dataset si elles y sont (idéalement, elles devraient l'être pour être cohérent avec le btn-start)
-            const clientPrenom = this.dataset.clientPrenom || ''; // Récupérer le prénom du client
-            const clientNom = this.dataset.clientNom || '';     // Récupérer le nom du client
-
+            const clientPrenom = this.dataset.clientPrenom || '';
+            const clientNom = this.dataset.clientNom || '';
             console.log(`Clôture de la mission ${missionId}`);
-
-            // Appeler openModalStartPrestation pour lancer le processus de QR et formulaire
-            // En passant l'ID de mission, et les informations du client (même si le QR ne sera pas scanné pour la fin, le processus est le même)
-            window.openModalStartPrestation(missionId, clientPrenom, clientNom);
+            
+            // On appelle la NOUVELLE fonction pour la clôture
+            window.openModalCloturerPrestation(missionId, clientPrenom, clientNom);
         };
     });
     // --- FIN ÉCOUTEUR ---
