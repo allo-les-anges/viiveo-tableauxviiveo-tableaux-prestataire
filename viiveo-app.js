@@ -60,38 +60,42 @@ window.openModalStartPrestation = function(missionId, clientPrenom, clientNom) {
 }
 
 window.openModalCloturerPrestation = function(missionId, clientPrenom, clientNom) {
-    console.log(`Ouverture de la modale pour la clôture de la mission ${missionId}`);
-    
-    const modalOverlay = document.getElementById("modalOverlay");
-    const stepQR = document.getElementById("stepQR"); // Étape QR
-    const stepForm = document.getElementById("stepForm"); // Étape formulaire
-    const stepSuccess = document.getElementById("stepSuccess"); // Étape succès
+    console.log(`Ouverture de la modale pour la clôture de la mission ${missionId}`);
+    
+    const modalOverlay = document.getElementById("modalOverlay");
+    const stepQR = document.getElementById("stepQR");
+    const stepForm = document.getElementById("stepForm");
+    const stepSuccess = document.getElementById("stepSuccess");
 
-    if (!modalOverlay || !stepQR || !stepForm || !stepSuccess) {
-      console.error("Erreur: Éléments de la modale non trouvés lors de l'ouverture pour clôture.");
-      alert("Une erreur est survenue lors de l'ouverture de la modale. Veuillez recharger la page.");
-      return;
-    }
-    
-    // Fermez le scanner s'il est actif (car on ne va pas l'utiliser ici)
-    if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
-      qrScannerInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
-      qrScannerInstance = null;
-    }
+    if (!modalOverlay || !stepQR || !stepForm || !stepSuccess) {
+      console.error("Erreur: Éléments de la modale non trouvés lors de l'ouverture pour clôture.");
+      alert("Une erreur est survenue lors de l'ouverture de la modale. Veuillez recharger la page.");
+      return;
+    }
+    
+    // Fermez le scanner s'il est actif (avant de potentiellement le réouvrir)
+    if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
+      qrScannerInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
+      qrScannerInstance = null;
+    }
 
-    // Réinitialise l'affichage des étapes et affiche le formulaire
-    stepQR.style.display = "none";
-    stepSuccess.style.display = "none";
-    modalOverlay.style.display = "flex";
-    
-    // Prépare les données du formulaire
-    window.currentMissionId = missionId;
-    currentClientPrenom = clientPrenom || "";
-    currentClientNom = clientNom || "";
-    
-    // Affiche directement le formulaire de fin de mission
-    showForm();
-}; // <--- L'accolade de fermeture se trouve ici.
+    // Réinitialise l'affichage des étapes pour commencer par le scanner
+    stepQR.style.display = "none";
+    stepForm.style.display = "none";
+    stepSuccess.style.display = "none";
+    modalOverlay.style.display = "flex";
+    
+    // Prépare les données du formulaire
+    window.currentMissionId = missionId;
+    currentClientPrenom = clientPrenom || "";
+    currentClientNom = clientNom || "";
+    
+    // CORRECTION : Démarre le scanner de QR code, au lieu d'afficher le formulaire directement.
+    // La suite sera gérée par la fonction de callback du scanner.
+    setTimeout(() => {
+        startQrScanner();
+    }, 50);
+};
     
     function closeModal() {
     const modalOverlay = document.getElementById("modalOverlay");
