@@ -117,37 +117,33 @@ window.openModalCloturerPrestation = function(missionId, clientPrenom, clientNom
     qrScannerInstance = null;
 }
 
+// Remplacez votre fonction existante par celle-ci
 async function startQrScanner() {
     const qrReaderElement = document.getElementById("qr-reader");
     const geolocationMessage = document.getElementById("geolocationMessage");
+    const stepQR = document.getElementById("stepQR");
 
-    if (!qrReaderElement) {
-        console.error("Éléments 'qr-reader' non trouvé. Le scanner ne peut pas démarrer.");
+    if (!qrReaderElement || !stepQR || !geolocationMessage) {
+        console.error("Éléments 'qr-reader' non trouvés. Le scanner ne peut pas démarrer.");
         alert("Erreur: Le scanner QR ne peut pas démarrer (élément manquant).");
         closeModal();
         return;
     }
 
-    const stepQR = document.getElementById("stepQR");
-    if (stepQR) {
-        stepQR.style.display = "flex";
-    }
-
+    stepQR.style.display = "flex";
     qrReaderElement.innerHTML = "";
 
     if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
         try {
             await qrScannerInstance.stop();
-            console.log("Ancienne instance du scanner arrêtée.");
         } catch (error) {
-            console.warn("Erreur lors de l'arrêt d'une ancienne instance de scanner:", error);
+            console.warn("Erreur à l'arrêt du scanner:", error);
         } finally {
             qrScannerInstance = null;
         }
     }
 
     qrScannerInstance = new Html5Qrcode("qr-reader");
-
     console.log("Tentative de démarrage du scanner QR...");
 
     try {
@@ -161,7 +157,6 @@ async function startQrScanner() {
             async (decodedText, decodedResult) => {
                 console.log(`QR Code détecté: ${decodedText}`);
                 try {
-                    // Arrêter le scanner immédiatement après la détection pour éviter de multiples scans
                     if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
                         await qrScannerInstance.stop();
                         qrScannerInstance = null;
@@ -172,66 +167,47 @@ async function startQrScanner() {
                     const idClient = url.searchParams.get("idclient") || url.searchParams.get("clientId");
                     if (!idClient) throw new Error("QR invalide : idclient manquant");
 
-                    console.log("ID Client extrait:", idClient);
-                    console.log("Email prestataire global (window.currentEmail):", window.currentEmail);
-                    console.log("URL Apps Script globale (window.webAppUrl):", window.webAppUrl);
-
-                    let currentLat, currentLon;
-                    if (!navigator.geolocation) {
+                    // RAPPEL : La géolocalisation est récupérée ici, mais la fonction showForm doit valider le résultat.
+                    if (navigator.geolocation) {
+                        try {
+                            const position = await new Promise((resolve, reject) => {
+                                navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+                            });
+                            window.currentLatitude = position.coords.latitude;
+                            window.currentLongitude = position.coords.longitude;
+                            if (geolocationMessage) geolocationMessage.style.display = "none";
+                        } catch (geoError) {
+                            let geoMessage = "❌ Géolocalisation requise.";
+                            switch (geoError.code) {
+                                case geoError.PERMISSION_DENIED:
+                                    geoMessage = "❌ Vous devez autoriser la géolocalisation.";
+                                    break;
+                                case geoError.POSITION_UNAVAILABLE:
+                                    geoMessage = "📍 Position non disponible.";
+                                    break;
+                                case geoError.TIMEOUT:
+                                    geoMessage = "⏱️ Le délai de localisation est dépassé.";
+                                    break;
+                            }
+                            if (geolocationMessage) {
+                                geolocationMessage.textContent = geoMessage;
+                                geolocationMessage.style.display = "block";
+                                geolocationMessage.style.color = "#d32f2f";
+                            }
+                            console.error("Erreur de géolocalisation lors du scan:", geoError);
+                            // Le script continue ici, mais les variables lat/lon ne seront pas définies
+                        }
+                    } else {
                         if (geolocationMessage) {
-                            geolocationMessage.textContent = "❌ Votre appareil ne supporte pas la géolocalisation.";
+                            geolocationMessage.textContent = "❌ Géolocalisation non supportée.";
                             geolocationMessage.style.display = "block";
                             geolocationMessage.style.color = "#d32f2f";
                         }
-                        console.error("Géolocalisation non supportée.");
-                        return; // Empêche la suite si non supporté
                     }
 
-                    if (geolocationMessage) {
-                        geolocationMessage.textContent = "Veuillez autoriser la géolocalisation...";
-                        geolocationMessage.style.display = "block";
-                        geolocationMessage.style.color = "#333";
-                    }
-
-                    try {
-                        const position = await new Promise((resolve, reject) => {
-                            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
-                        });
-                        currentLat = position.coords.latitude;
-                        currentLon = position.coords.longitude;
-                        currentLatitude = currentLat;
-                        currentLongitude = currentLon;
-                        if (geolocationMessage) geolocationMessage.style.display = "none"; // Masque le message si succès
-                    } catch (geoError) {
-                        let geoMessage = "⚠️ Erreur de géolocalisation.";
-                        switch (geoError.code) {
-                            case geoError.PERMISSION_DENIED:
-                                geoMessage = "❌ Vous devez autoriser la géolocalisation pour continuer. Veuillez vérifier les paramètres de votre navigateur et de votre téléphone.";
-                                break;
-                            case geoError.POSITION_UNAVAILABLE:
-                                geoMessage = "📍 Position non disponible. Veuillez vérifier votre connexion ou votre environnement.";
-                                break;
-                            case geoError.TIMEOUT:
-                                geoMessage = "⏱️ Le délai de localisation est dépassé. Veuillez réessayer.";
-                                break;
-                            default:
-                                geoMessage = "❌ Erreur inconnue de géolocalisation.";
-                        }
-                        if (geolocationMessage) {
-                            geolocationMessage.textContent = geoMessage;
-                            geolocationMessage.style.display = "block";
-                            geolocationMessage.style.color = "#d32f2f";
-                        }
-                        console.error("Erreur de géolocalisation lors du scan:", geoError);
-                        // Ne pas fermer la modale ici pour laisser le message visible
-                        return; // Empêche la suite si géolocalisation échoue
-                    }
-
-                    const fullAppsScriptApiUrl = `${window.webAppUrl}?type=verifqr&idclient=${encodeURIComponent(idClient)}&email=${encodeURIComponent(window.currentEmail)}&latitude=${encodeURIComponent(currentLat)}&longitude=${encodeURIComponent(currentLon)}`;
-                    console.log("URL COMPLETE ENVOYEE AU BACKEND:", fullAppsScriptApiUrl);
-
+                    const fullAppsScriptApiUrl = `${window.webAppUrl}?type=verifqr&idclient=${encodeURIComponent(idClient)}&email=${encodeURIComponent(window.currentEmail)}&latitude=${encodeURIComponent(window.currentLatitude || 'null')}&longitude=${encodeURIComponent(window.currentLongitude || 'null')}`;
                     const callbackName = 'cbVerifyClient' + Date.now();
-                    const data = await window.callApiJsonp(fullAppsScriptApiUrl, callbackName); // Utilisation de window.callApiJsonp
+                    const data = await window.callApiJsonp(fullAppsScriptApiUrl, callbackName);
 
                     if (!data.success) {
                         alert("❌ " + data.message);
@@ -240,13 +216,14 @@ async function startQrScanner() {
                     }
 
                     if (data.missionStatus === "started") {
-                        heureDebut = new Date().toISOString();
+                        window.heureDebut = new Date().toISOString();
                         alert("✅ Mission démarrée avec succès !");
                         closeModal();
                         if (window.currentEmail) {
                             await window.loadMissions(window.currentEmail);
                         }
                     } else if (data.missionStatus === "readyForEnd") {
+                        // On appelle la nouvelle fonction qui va vérifier la géolocalisation
                         getGeolocationAndShowForm();
                     } else {
                         alert("Statut de mission inattendu : " + (data.message || "Erreur inconnue."));
@@ -259,16 +236,31 @@ async function startQrScanner() {
                     closeModal();
                 }
             },
-            (errorMessage) => {
-                // console.warn("QR Scan progress error:", errorMessage);
-            }
+            (errorMessage) => {}
         );
         console.log("Scanner QR démarré avec succès.");
     } catch (err) {
-        alert("Impossible d’activer la caméra. Assurez-vous d'avoir donné les permissions et que la caméra n'est pas utilisée par une autre application.");
+        alert("Impossible d’activer la caméra. Assurez-vous d'avoir donné les permissions.");
         console.error("Erreur d'initialisation de la caméra (détails complètes):", err);
         closeModal();
     }
+}
+
+// Remplacez votre fonction existante par celle-ci
+function getGeolocationAndShowForm() {
+    const geolocationMessage = document.getElementById("geolocationMessage");
+    
+    // NOUVEAU : Vérification de la validité des coordonnées avant d'afficher le formulaire
+    if (!window.currentLatitude || !window.currentLongitude) {
+        if (geolocationMessage) {
+            geolocationMessage.textContent = "❌ La géolocalisation a échoué. Veuillez réessayer de scanner le QR.";
+            geolocationMessage.style.display = "block";
+            geolocationMessage.style.color = "#d32f2f";
+        }
+        return; // Ne pas afficher le formulaire si les coordonnées sont manquantes
+    }
+    
+    showForm();
 }
 
 function getGeolocationAndShowForm() {
