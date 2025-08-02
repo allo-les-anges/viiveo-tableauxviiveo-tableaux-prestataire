@@ -401,6 +401,9 @@ function initializeModalListeners() {
             formData.append("prestataireNom", window.currentNom);
             formData.append("prestataireEmail", window.currentEmail);
 
+            // DÉBOGAGE : Ajoutez cette ligne pour voir si des photos sont bien sélectionnées
+            console.log(`Nombre de photos à envoyer : ${photosInput.files.length}`);
+
             for (const file of photosInput.files) {
                 formData.append("photos", file);
             }
