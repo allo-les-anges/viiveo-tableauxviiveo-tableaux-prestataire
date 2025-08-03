@@ -1,322 +1,23 @@
-// viiveo-app.js - À placer sur GitHub
+// viiveo-app.js - Fichier consolidé et corrigé
 
 // Variables globales pour l'état de la mission et du prestataire
+let qrScannerInstance = null;
 let currentMissionId = null;
-let currentClientPrenom = "", currentClientNom = "";
-let currentPrestatairePrenom = null, currentPrestataireNom = null;
-let currentLatitude = null, currentLongitude = null;
+let currentClientPrenom = "";
+let currentClientNom = "";
+let currentPrestatairePrenom = null;
+let currentPrestataireNom = null;
+let currentLatitude = null;
+let currentLongitude = null;
 let heureDebut = null;
 
-// Ajoutez cette variable globale pour l'instance du scanner.
-// Cela permet de la nettoyer correctement à la fermeture de la modale.
-let qrScannerInstance = null; // Correctement déclaré en global
+// L'URL de votre Web App Apps Script
+const webAppUrl = "https://script.google.com/macros/s/AKfycbzEEZZnZJK1BEXlCk81ogi0Aa7MFGunOkjS5s2CCDIZPSkHq0OtPAcEBLrkXp-fpb8aaQ/exec";
 
-// Fonctions liées au scanner et à la modale
-function setTodayDate(obsDateInput) {
-    if (obsDateInput) {
-        obsDateInput.value = new Date().toISOString().split("T")[0];
-    }
-}
-
-window.openModalStartPrestation = function(missionId, clientPrenom, clientNom) {
-    console.log(`openModalStartPrestation appelée pour mission ID: ${missionId}`);
-    const modalOverlay = document.getElementById("modalOverlay");
-    const stepQR = document.getElementById("stepQR");
-    const stepForm = document.getElementById("stepForm");
-    const stepSuccess = document.getElementById("stepSuccess");
-    const geolocationMessage = document.getElementById("geolocationMessage");
-
-    if (!modalOverlay || !stepQR || !stepForm || !stepSuccess || !geolocationMessage) {
-        console.error("Erreur: Éléments de la modale ou du message de géolocalisation non trouvés lors de l'ouverture.");
-        alert("Une erreur est survenue lors de l'ouverture de la modale. Veuillez recharger la page.");
-        return;
-    }
-
-    if (!window.currentEmail) {
-        alert("Erreur: Les données du prestataire ne sont pas chargées. Veuillez vous reconnecter.");
-        console.error("Tentative d'ouvrir la modale sans données prestataire (email null).");
-        return;
-    }
-
-    window.currentMissionId = missionId;
-    // Assurez-vous que clientPrenom et clientNom sont bien passés depuis le bouton
-    currentClientPrenom = clientPrenom || ""; // Définit à "" si undefined
-    currentClientNom = clientNom || ""; // Définit à "" si undefined
-    currentPrestatairePrenom = window.currentPrenom;
-    currentPrestataireNom = window.currentNom;
-
-    // S'assurer que les étapes sont dans le bon ordre d'affichage
-    stepQR.style.display = "none";
-    stepForm.style.display = "none";
-    stepSuccess.style.display = "none";
-    geolocationMessage.style.display = "none";
-    geolocationMessage.textContent = "";
-    modalOverlay.style.display = "flex";
-
-    // Démarre le scanner APRES que la modale est rendue visible
-    setTimeout(() => {
-        startQrScanner();
-    }, 50);
-}
-
-window.openModalCloturerPrestation = function(missionId, clientPrenom, clientNom) {
-    console.log(`Ouverture de la modale pour la clôture de la mission ${missionId}`);
-    
-    const modalOverlay = document.getElementById("modalOverlay");
-    const stepQR = document.getElementById("stepQR");
-    const stepForm = document.getElementById("stepForm");
-    const stepSuccess = document.getElementById("stepSuccess");
-
-    if (!modalOverlay || !stepQR || !stepForm || !stepSuccess) {
-      console.error("Erreur: Éléments de la modale non trouvés lors de l'ouverture pour clôture.");
-      alert("Une erreur est survenue lors de l'ouverture de la modale. Veuillez recharger la page.");
-      return;
-    }
-    
-    // Fermez le scanner s'il est actif (avant de potentiellement le réouvrir)
-    if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
-      qrScannerInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
-      qrScannerInstance = null;
-    }
-
-    // Réinitialise l'affichage des étapes pour commencer par le scanner
-    stepQR.style.display = "none";
-    stepForm.style.display = "none";
-    stepSuccess.style.display = "none";
-    modalOverlay.style.display = "flex";
-    
-    // Prépare les données du formulaire
-    window.currentMissionId = missionId;
-    currentClientPrenom = clientPrenom || "";
-    currentClientNom = clientNom || "";
-    
-    // CORRECTION : Démarre le scanner de QR code, au lieu d'afficher le formulaire directement.
-    // La suite sera gérée par la fonction de callback du scanner.
-    setTimeout(() => {
-        startQrScanner();
-    }, 50);
-};
-    
-    function closeModal() {
-    const modalOverlay = document.getElementById("modalOverlay");
-    if (modalOverlay) {
-        modalOverlay.style.display = "none";
-    }
-    // Correction ici : Appel de clearFormFields() au lieu de clearForm()
-    clearFormFields(); // Appelle la fonction existante pour nettoyer le formulaire
-
-    const geolocationMessage = document.getElementById("geolocationMessage");
-    if (geolocationMessage) {
-        geolocationMessage.style.display = "none";
-        geolocationMessage.textContent = "";
-    }
-    // Arrête le scanner si une instance est active
-    if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
-        qrScannerInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
-    }
-    qrScannerInstance = null;
-}
-
-// Remplacez votre fonction existante par celle-ci
-async function startQrScanner() {
-    const qrReaderElement = document.getElementById("qr-reader");
-    const geolocationMessage = document.getElementById("geolocationMessage");
-    const stepQR = document.getElementById("stepQR");
-
-    if (!qrReaderElement || !stepQR || !geolocationMessage) {
-        console.error("Éléments 'qr-reader' non trouvés. Le scanner ne peut pas démarrer.");
-        alert("Erreur: Le scanner QR ne peut pas démarrer (élément manquant).");
-        closeModal();
-        return;
-    }
-
-    stepQR.style.display = "flex";
-    qrReaderElement.innerHTML = "";
-
-    if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
-        try {
-            await qrScannerInstance.stop();
-        } catch (error) {
-            console.warn("Erreur à l'arrêt du scanner:", error);
-        } finally {
-            qrScannerInstance = null;
-        }
-    }
-
-    qrScannerInstance = new Html5Qrcode("qr-reader");
-    console.log("Tentative de démarrage du scanner QR...");
-
-    try {
-        await qrScannerInstance.start(
-            { facingMode: "environment" },
-            {
-                fps: 10,
-                qrbox: { width: 250, height: 250 },
-                aspectRatio: 1.333334
-            },
-            async (decodedText, decodedResult) => {
-                console.log(`QR Code détecté: ${decodedText}`);
-                try {
-                    if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
-                        await qrScannerInstance.stop();
-                        qrScannerInstance = null;
-                        console.log("Scanner arrêté après détection réussie.");
-                    }
-
-                    const url = new URL(decodedText);
-                    const idClient = url.searchParams.get("idclient") || url.searchParams.get("clientId");
-                    if (!idClient) throw new Error("QR invalide : idclient manquant");
-
-                    // RAPPEL : La géolocalisation est récupérée ici, mais la fonction showForm doit valider le résultat.
-                    if (navigator.geolocation) {
-                        try {
-                            const position = await new Promise((resolve, reject) => {
-                                navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
-                            });
-                            window.currentLatitude = position.coords.latitude;
-                            window.currentLongitude = position.coords.longitude;
-                            if (geolocationMessage) geolocationMessage.style.display = "none";
-                        } catch (geoError) {
-                            let geoMessage = "❌ Géolocalisation requise.";
-                            switch (geoError.code) {
-                                case geoError.PERMISSION_DENIED:
-                                    geoMessage = "❌ Vous devez autoriser la géolocalisation.";
-                                    break;
-                                case geoError.POSITION_UNAVAILABLE:
-                                    geoMessage = "📍 Position non disponible.";
-                                    break;
-                                case geoError.TIMEOUT:
-                                    geoMessage = "⏱️ Le délai de localisation est dépassé.";
-                                    break;
-                            }
-                            if (geolocationMessage) {
-                                geolocationMessage.textContent = geoMessage;
-                                geolocationMessage.style.display = "block";
-                                geolocationMessage.style.color = "#d32f2f";
-                            }
-                            console.error("Erreur de géolocalisation lors du scan:", geoError);
-                            // Le script continue ici, mais les variables lat/lon ne seront pas définies
-                        }
-                    } else {
-                        if (geolocationMessage) {
-                            geolocationMessage.textContent = "❌ Géolocalisation non supportée.";
-                            geolocationMessage.style.display = "block";
-                            geolocationMessage.style.color = "#d32f2f";
-                        }
-                    }
-
-                    const fullAppsScriptApiUrl = `${window.webAppUrl}?type=verifqr&idclient=${encodeURIComponent(idClient)}&email=${encodeURIComponent(window.currentEmail)}&latitude=${encodeURIComponent(window.currentLatitude || 'null')}&longitude=${encodeURIComponent(window.currentLongitude || 'null')}`;
-                    const callbackName = 'cbVerifyClient' + Date.now();
-                    const data = await window.callApiJsonp(fullAppsScriptApiUrl, callbackName);
-
-                    if (!data.success) {
-                        alert("❌ " + data.message);
-                        closeModal();
-                        return;
-                    }
-
-                    if (data.missionStatus === "started") {
-                        window.heureDebut = new Date().toISOString();
-                        alert("✅ Mission démarrée avec succès !");
-                        closeModal();
-                        if (window.currentEmail) {
-                            await window.loadMissions(window.currentEmail);
-                        }
-                    } else if (data.missionStatus === "readyForEnd") {
-                        // On appelle la nouvelle fonction qui va vérifier la géolocalisation
-                        getGeolocationAndShowForm();
-                    } else {
-                        alert("Statut de mission inattendu : " + (data.message || "Erreur inconnue."));
-                        closeModal();
-                    }
-
-                } catch (err) {
-                    alert("Erreur lors du scan QR : " + (err.message || "Erreur inconnue"));
-                    console.error("Erreur dans startQrScanner (callback de succès - détails complètes):", err);
-                    closeModal();
-                }
-            },
-            (errorMessage) => {}
-        );
-        console.log("Scanner QR démarré avec succès.");
-    } catch (err) {
-        alert("Impossible d’activer la caméra. Assurez-vous d'avoir donné les permissions.");
-        console.error("Erreur d'initialisation de la caméra (détails complètes):", err);
-        closeModal();
-    }
-}
-
-// Remplacez votre fonction existante par celle-ci
-function getGeolocationAndShowForm() {
-    const geolocationMessage = document.getElementById("geolocationMessage");
-    
-    // NOUVEAU : Vérification de la validité des coordonnées avant d'afficher le formulaire
-    if (!window.currentLatitude || !window.currentLongitude) {
-        if (geolocationMessage) {
-            geolocationMessage.textContent = "❌ La géolocalisation a échoué. Veuillez réessayer de scanner le QR.";
-            geolocationMessage.style.display = "block";
-            geolocationMessage.style.color = "#d32f2f";
-        }
-        return; // Ne pas afficher le formulaire si les coordonnées sont manquantes
-    }
-    
-    showForm();
-}
-
-function getGeolocationAndShowForm() {
-    showForm();
-}
-
-function showForm() {
-    const stepQR = document.getElementById("stepQR");
-    const stepForm = document.getElementById("stepForm");
-    const clientNameInput = document.getElementById("clientName");
-    const obsDateInput = document.getElementById("obsDate");
-
-    if (!stepQR || !stepForm || !clientNameInput || !obsDateInput) {
-        console.error("Éléments du formulaire de prestation non trouvés pour l'affichage.");
-        alert("Erreur: Impossible d'afficher le formulaire de prestation. Veuillez recharger la page.");
-        closeModal();
-        return;
-    }
-
-    stepQR.style.display = "none";
-    stepForm.style.display = "flex";
-    // Utilise les variables globales currentClientPrenom et currentClientNom
-    clientNameInput.value = `${currentClientPrenom} ${currentClientNom}`.trim();
-    if (clientNameInput.value === "") {
-        clientNameInput.value = "Client inconnu";
-    }
-    setTodayDate(obsDateInput);
-}
-
-function clearFormFields() {
-    const obsDateInput = document.getElementById("obsDate");
-    const etatSanteInput = document.getElementById("etatSante");
-    const etatFormeInput = document.getElementById("etatForme");
-    const environnementInput = document.getElementById("environnement");
-    const photosInput = document.getElementById("photos");
-    const photosPreview = document.getElementById("photosPreview");
-
-    if (obsDateInput) obsDateInput.value = "";
-    if (etatSanteInput) etatSanteInput.value = "";
-    if (etatFormeInput) etatFormeInput.value = "";
-    if (environnementInput) environnementInput.value = "";
-    if (photosInput) photosInput.value = "";
-    if (photosPreview) photosPreview.innerHTML = "";
-}
-
-window.show = function(el, visible) {
+// --- Fonctions utilitaires ---
+function show(el, visible) {
     if (!el) return;
     el.style.display = visible ? "block" : "none";
-};
-
-function tempDisable(btn, ms = 1000) {
-    if (!btn) return;
-    btn.disabled = true;
-    setTimeout(() => {
-        btn.disabled = false;
-    }, ms);
 }
 
 function createElementFromHTML(htmlString) {
@@ -325,24 +26,328 @@ function createElementFromHTML(htmlString) {
     return div.firstChild;
 }
 
-// viiveo-app.js
-// ... (autres fonctions) ...
+function setTodayDate(obsDateInput) {
+    if (obsDateInput) {
+        obsDateInput.value = new Date().toISOString().split("T")[0];
+    }
+}
 
-function initializeModalListeners() {
-    const modalOverlay = document.getElementById("modalOverlay");
-    const stepQR = document.getElementById("stepQR");
-    const stepForm = document.getElementById("stepForm");
-    const stepSuccess = document.getElementById("stepSuccess");
+function clearFormFields() {
     const obsForm = document.getElementById("obsForm");
     const photosInput = document.getElementById("photos");
     const photosPreview = document.getElementById("photosPreview");
+
+    if (obsForm) obsForm.reset();
+    if (photosInput) photosInput.value = "";
+    if (photosPreview) photosPreview.innerHTML = "";
+}
+
+// Fonction pour faire des requêtes JSONP
+async function callApiJsonp(url, callbackName, timeout = 10000) {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName;
+        document.head.appendChild(script);
+
+        window[callbackName] = (data) => {
+            delete window[callbackName];
+            document.head.removeChild(script);
+            resolve(data);
+        };
+
+        script.onerror = () => {
+            delete window[callbackName];
+            document.head.removeChild(script);
+            reject(new Error("Erreur de chargement du script JSONP."));
+        };
+
+        setTimeout(() => {
+            if (window[callbackName]) {
+                delete window[callbackName];
+                document.head.removeChild(script);
+                reject(new Error("Délai d'attente expiré pour le JSONP."));
+            }
+        }, timeout);
+    });
+}
+
+// --- Fonctions de gestion de la modale ---
+function startQrScanner() {
+    const stepQR = document.getElementById("stepQR");
+    const qrReaderElement = document.getElementById("qr-reader");
+
+    if (!stepQR || !qrReaderElement) {
+        console.error("Erreur: Éléments du scanner non trouvés.");
+        alert("Erreur: Impossible de démarrer le scanner.");
+        return;
+    }
+
+    stepQR.style.display = "flex";
+    qrReaderElement.innerHTML = "";
+    clearFormFields();
+
+    if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
+        qrScannerInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
+    }
+    
+    qrScannerInstance = new Html5Qrcode("qr-reader");
+
+    qrScannerInstance.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        async (decodedText) => {
+            console.log(`QR Code détecté: ${decodedText}`);
+            if (qrScannerInstance) {
+                await qrScannerInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
+                qrScannerInstance = null;
+            }
+            handleQrCode(decodedText);
+        },
+        (errorMessage) => {}
+    ).catch(err => {
+        console.error("Erreur d'initialisation de la caméra:", err);
+        alert("Impossible d’activer la caméra. Assurez-vous d'avoir donné les permissions.");
+        closeModal();
+    });
+}
+
+async function handleQrCode(qrText) {
+    const urlParams = new URLSearchParams(qrText.split('?')[1]);
+    const clientId = urlParams.get('idclient') || urlParams.get('clientId');
+    
+    if (!clientId) {
+        alert("QR code invalide. L'identifiant client est manquant.");
+        closeModal();
+        return;
+    }
+
+    // Récupération de la géolocalisation de début
+    let lat = null;
+    let lon = null;
+    try {
+        const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+        });
+        lat = position.coords.latitude;
+        lon = position.coords.longitude;
+        window.currentLatitude = lat;
+        window.currentLongitude = lon;
+    } catch (geoError) {
+        alert("❌ Erreur de géolocalisation. Veuillez autoriser la localisation.");
+        console.error("Erreur de géolocalisation:", geoError);
+        closeModal();
+        return;
+    }
+
+    // Appel de l'API pour vérifier le QR code
+    try {
+        const url = `${webAppUrl}?type=verifqr&idclient=${encodeURIComponent(clientId)}&email=${encodeURIComponent(currentEmail)}&latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}`;
+        const response = await callApiJsonp(url, `cbVerify${Date.now()}`);
+
+        if (response.success && response.missionStatus === "readyForEnd") {
+            window.currentMissionId = response.missionId;
+            window.currentClientPrenom = response.client.prenom;
+            window.currentClientNom = response.client.nom;
+            window.heureDebut = response.heureDebut;
+            showForm();
+        } else {
+            alert("Erreur de vérification : " + (response.message || "Statut de mission inattendu."));
+            closeModal();
+        }
+    } catch (err) {
+        alert("Erreur réseau ou du serveur lors de la vérification QR.");
+        console.error("Erreur lors de la vérification QR:", err);
+        closeModal();
+    }
+}
+
+function openModalCloturerPrestation(missionId, clientPrenom, clientNom) {
+    currentMissionId = missionId;
+    currentClientPrenom = clientPrenom || "";
+    currentClientNom = clientNom || "";
+
+    const modalOverlay = document.getElementById("modalOverlay");
+    if (modalOverlay) {
+        modalOverlay.style.display = "flex";
+        startQrScanner();
+    }
+}
+
+function showForm() {
+    const stepQR = document.getElementById("stepQR");
+    const stepForm = document.getElementById("stepForm");
     const clientNameInput = document.getElementById("clientName");
     const obsDateInput = document.getElementById("obsDate");
-    const etatSanteInput = document.getElementById("etatSante");
-    const etatFormeInput = document.getElementById("etatForme");
-    const environnementInput = document.getElementById("environnement");
 
-    if (modalOverlay && stepQR && stepForm && stepSuccess && obsForm && photosInput && photosPreview && clientNameInput && obsDateInput && etatSanteInput && etatFormeInput && environnementInput) {
+    if (stepQR && stepForm && clientNameInput && obsDateInput) {
+        stepQR.style.display = "none";
+        stepForm.style.display = "flex";
+        clientNameInput.value = `${currentClientPrenom} ${currentClientNom}`.trim();
+        setTodayDate(obsDateInput);
+    }
+}
+
+function closeModal() {
+    const modalOverlay = document.getElementById("modalOverlay");
+    if (modalOverlay) modalOverlay.style.display = "none";
+
+    if (qrScannerInstance && typeof qrScannerInstance.stop === 'function') {
+        qrScannerInstance.stop().catch(err => console.warn("Erreur à l'arrêt du scanner:", err));
+    }
+    qrScannerInstance = null;
+    clearFormFields();
+}
+
+// --- Fonctions d'authentification et de chargement des missions ---
+async function loadMissions(email) {
+    const missionListDiv = document.getElementById("missionList");
+    if (!missionListDiv) {
+        console.error("LOAD MISSIONS: Élément 'missionList' non trouvé.");
+        return;
+    }
+    missionListDiv.innerHTML = "<p>Chargement des missions...</p>";
+
+    try {
+        const url = `${webAppUrl}?type=missionspresta&email=${encodeURIComponent(email)}`;
+        const response = await callApiJsonp(url, `cbMissions${Date.now()}`);
+
+        if (response.success && response.missions && response.missions.length > 0) {
+            missionListDiv.innerHTML = '';
+            response.missions.forEach(mission => {
+                const missionElement = createElementFromHTML(`
+                    <div class="mission-card">
+                        <h3>Mission ${mission.missionId}</h3>
+                        <p>Client: ${mission.client}</p>
+                        <p>Service: ${mission.service}</p>
+                        <p>Date: ${mission.date}</p>
+                        <p>Adresse: ${mission.adresse}</p>
+                        <button class="close-mission-btn" data-mission-id="${mission.missionId}" data-client-prenom="${mission.clientPrenom}" data-client-nom="${mission.clientNom}">Clôturer la mission</button>
+                    </div>
+                `);
+                missionElement.querySelector(".close-mission-btn").addEventListener("click", (e) => {
+                    const missionId = e.target.getAttribute("data-mission-id");
+                    const clientPrenom = e.target.getAttribute("data-client-prenom");
+                    const clientNom = e.target.getAttribute("data-client-nom");
+                    openModalCloturerPrestation(missionId, clientPrenom, clientNom);
+                });
+                missionListDiv.appendChild(missionElement);
+            });
+        } else {
+            missionListDiv.innerHTML = "<p>Aucune mission en attente.</p>";
+        }
+    } catch (err) {
+        console.error("LOAD MISSIONS: Erreur lors du chargement des missions:", err);
+        missionListDiv.innerHTML = "<p>Erreur lors du chargement des missions. Veuillez réessayer.</p>";
+    }
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById("email")?.value.trim();
+    const password = document.getElementById("password")?.value.trim();
+    const message = document.getElementById("message");
+    const loader = document.getElementById("loader");
+    const loginSection = document.querySelector(".viiveo-login");
+    const missionsSection = document.querySelector(".viiveo-missions");
+
+    if (!email || !password) {
+        if (message) message.textContent = "Champs requis.";
+        return;
+    }
+
+    if (message) message.textContent = "";
+    show(loader, true);
+
+    try {
+        const url = `${webAppUrl}?type=loginpresta&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+        const data = await callApiJsonp(url, `cbLogin${Date.now()}`);
+
+        if (data.success) {
+            window.currentEmail = data.email;
+            window.currentPrenom = data.prenom;
+            window.currentNom = data.nom;
+            document.body.classList.add('logged-in');
+            document.getElementById('welcomeMessage').textContent = `Prestataire connecté : ${data.prenom} ${data.nom} (${data.email})`;
+            show(loginSection, false);
+            show(missionsSection, true);
+            await loadMissions(window.currentEmail);
+        } else {
+            if (message) message.textContent = data.message || "Connexion échouée.";
+        }
+    } catch (err) {
+        if (message) message.textContent = "Erreur serveur ou réseau.";
+        console.error("Erreur lors de la connexion:", err);
+    } finally {
+        show(loader, false);
+    }
+}
+
+// --- Exécution principale à l'initialisation de la page ---
+document.addEventListener("DOMContentLoaded", function() {
+    const loginForm = document.getElementById("loginForm");
+    const obsForm = document.getElementById("obsForm");
+    const modalCloseBtn = document.getElementById("btnCloseModal");
+    const btnCancelQR = document.getElementById("btnCancelQR");
+    const btnCancelForm = document.getElementById("btnCancelForm");
+    const btnCloseSuccess = document.getElementById("btnCloseSuccess");
+
+    // Ajout dynamique du HTML de la modale si ce n'est pas déjà fait
+    if (!document.getElementById("modalOverlay")) {
+        document.body.insertAdjacentHTML('beforeend', `
+            <div id="modalOverlay" style="display: none;">
+                <div id="modalContent">
+                    <div id="stepQR" style="display:none;">
+                        <h2>📸 Scanner le QR code client</h2>
+                        <div id="qr-reader"></div>
+                        <p id="geolocationMessage" style="color: #d32f2f; font-weight: bold; text-align: center; margin-top: 15px; display: none;"></p>
+                        <button id="btnCancelQR" class="close-btn">Annuler</button>
+                    </div>
+                    <div id="stepForm" style="display:none;">
+                        <h2>📝 Fiche d'observation</h2>
+                        <form id="obsForm">
+                            <label for="clientName">Nom du client</label>
+                            <input type="text" id="clientName" readonly />
+                            <label for="obsDate">Date de l'observation</label>
+                            <input type="date" id="obsDate" required />
+                            <label for="etatSante">État de santé</label>
+                            <textarea id="etatSante" rows="3" placeholder="Décrire l'état de santé..."></textarea>
+                            <label for="etatForme">État de forme</label>
+                            <select id="etatForme" required>
+                                <option value="">-- Choisir --</option>
+                                <option>Très bon</option>
+                                <option>Bon</option>
+                                <option>Moyen</option>
+                                <option>Faible</option>
+                                <option>Très faible</option>
+                            </select>
+                            <label for="environnement">Environnement</label>
+                            <textarea id="environnement" rows="3" placeholder="Décrire l'environnement..."></textarea>
+                            <label for="photos">Photos (max 3)</label>
+                            <input type="file" id="photos" accept="image/*" multiple />
+                            <div id="photosPreview"></div>
+                            <button type="submit">Envoyer la fiche</button>
+                            <button type="button" id="btnCancelForm">Annuler</button>
+                        </form>
+                    </div>
+                    <div id="stepSuccess" style="display:none;">
+                        <h2>✅ Fiche envoyée avec succès !</h2>
+                        <button id="btnCloseSuccess">Fermer</button>
+                    </div>
+                </div>
+            </div>
+        `);
+        console.log("Modal HTML injected dynamically.");
+    }
+
+    if (loginForm) {
+        loginForm.addEventListener("submit", handleLogin);
+    }
+    
+    // Listeners pour la modale
+    const photosInput = document.getElementById("photos");
+    const photosPreview = document.getElementById("photosPreview");
+
+    if (photosInput && photosPreview) {
         photosInput.addEventListener("change", e => {
             photosPreview.innerHTML = "";
             const files = e.target.files;
@@ -351,545 +356,115 @@ function initializeModalListeners() {
                 photosInput.value = "";
                 return;
             }
-            const fileReaders = Array.from(files).map(file => {
-                return new Promise(resolve => {
-                    const reader = new FileReader();
-                    reader.onload = ev => {
-                        const img = document.createElement("img");
-                        img.src = ev.target.result;
-                        photosPreview.appendChild(img);
-                        resolve();
-                    };
-                    reader.readAsDataURL(file);
-                });
-            });
-            Promise.all(fileReaders).then(() => {
-                console.log("Toutes les photos ont été prévisualisées.");
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    const img = document.createElement("img");
+                    img.src = ev.target.result;
+                    photosPreview.appendChild(img);
+                };
+                reader.readAsDataURL(file);
             });
         });
+    }
 
+    // Listener pour la soumission du formulaire d'observation
+    if (obsForm) {
         obsForm.addEventListener("submit", async e => {
-    e.preventDefault();
+            e.preventDefault();
 
-    if (photosInput.files.length > 3) {
-        alert("Maximum 3 photos autorisées.");
-        return;
-    }
-
-    if (!window.currentEmail) {
-        alert("Erreur: Données du prestataire manquantes pour l'envoi.");
-        console.error("Tentative d'envoi de formulaire sans email prestataire.");
-        return;
-    }
-
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    if (submitBtn) submitBtn.disabled = true;
-
-    try {
-        // RÉCUPÉRATION DES COORDONNÉES DE FIN DE MISSION
-        let finalLat = null;
-        let finalLon = null;
-        try {
-            console.log("Tentative de récupération de la géolocalisation de fin...");
-            const position = await new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
-            });
-            finalLat = position.coords.latitude;
-            finalLon = position.coords.longitude;
-            console.log("✅ Géolocalisation de fin capturée :", finalLat, finalLon);
-        } catch (geoError) {
-            alert("❌ Erreur de géolocalisation pour la clôture. Veuillez réessayer.");
-            console.error("❌ Erreur de géolocalisation de fin:", geoError);
-            if (submitBtn) submitBtn.disabled = false;
-            return;
-        }
-
-        const heureFin = new Date().toISOString();
-        const formData = new FormData();
-        
-        formData.append("type", "envoyerFiche");
-        formData.append("missionId", window.currentMissionId);
-        formData.append("prenomClient", window.currentClientPrenom);
-        formData.append("nomClient", window.currentClientNom);
-        formData.append("obsDate", obsDateInput.value);
-        formData.append("etatSante", etatSanteInput.value);
-        formData.append("etatForme", etatFormeInput.value);
-        formData.append("environnement", environnementInput.value);
-        
-        // CORRECTION MAJEURE : Ajout des variables de géolocalisation de début et de fin
-        formData.append("latitudeDebut", window.currentLatitude);
-        formData.append("longitudeDebut", window.currentLongitude);
-        formData.append("latitudeFin", finalLat);
-        formData.append("longitudeFin", finalLon);
-        
-        formData.append("heureDebut", window.heureDebut);
-        formData.append("heureFin", heureFin);
-        formData.append("prestatairePrenom", window.currentPrenom);
-        formData.append("prestataireNom", window.currentNom);
-        formData.append("prestataireEmail", window.currentEmail);
-
-        console.log(`➡️ Tentative d'ajout des photos à l'objet FormData. Nombre de fichiers : ${photosInput.files.length}`);
-        for (const file of photosInput.files) {
-            formData.append("photos", file);
-            console.log(`✅ Ajout du fichier : ${file.name}`);
-        }
-        
-        console.log("➡️ Lancement de la requête fetch pour envoyer la fiche.");
-
-        const response = await fetch(window.webAppUrl, {
-            method: "POST",
-            body: formData,
-        });
-
-        const json = await response.json();
-
-        if (json.success) {
-            stepForm.style.display = "none";
-            stepSuccess.style.display = "flex";
-            if (typeof window.loadMissions === 'function' && window.currentEmail) {
-                window.loadMissions(window.currentEmail);
+            if (photosInput.files.length > 3) {
+                alert("Maximum 3 photos autorisées.");
+                return;
             }
-        } else {
-            alert("Erreur : " + (json.message || "Envoi échoué"));
-        }
-    } catch (err) {
-        alert("Erreur réseau ou du serveur lors de l'envoi de la fiche.");
-        console.error("Erreur lors de l'envoi de la fiche:", err);
-    } finally {
-        if (submitBtn) submitBtn.disabled = false;
-    }
-});
-function initializeLoginForm() {
-    const loginForm = document.getElementById("loginForm");
-    console.log("DEBUG initializeLoginForm: loginForm element:", loginForm);
-    console.log("DEBUG initializeLoginForm: typeof window.login:", typeof window.login);
 
-    if (loginForm && typeof window.login === 'function') {
-        loginForm.removeEventListener("submit", window.login);
-        loginForm.addEventListener("submit", window.login);
-        console.log("Écouteur de soumission ajouté au formulaire de connexion.");
-    } else {
-        console.warn("Formulaire de connexion ou fonction 'login' non disponible. Nouvelle tentative...");
-        setTimeout(initializeLoginForm, 200);
-    }
-}
-
-function createAndInjectModalHtml() {
-    const modalHtml = `
-        <div id="modalOverlay" style="display: none;">
-            <div id="modalContent">
-                <div id="stepQR" style="display:none;">
-                    <h2>📸 Scanner le QR code client</h2>
-                    <div id="qr-reader"></div>
-                    <p id="geolocationMessage" style="color: #d32f2f; font-weight: bold; text-align: center; margin-top: 15px; display: none;"></p>
-                    <button id="btnCancelQR">Annuler</button>
-                </div>
-
-                <div id="stepForm" style="display:none;">
-                    <h2>📝 Fiche d'observation</h2>
-                    <form id="obsForm">
-                        <label for="clientName">Nom du client</label>
-                        <input type="text" id="clientName" readonly />
-                        <label for="obsDate">Date de l'observation</label>
-                        <input type="date" id="obsDate" required />
-                        <label for="etatSante">État de santé</label>
-                        <textarea id="etatSante" rows="3" placeholder="Décrire l'état de santé..."></textarea>
-                        <label for="etatForme">État de forme</label>
-                        <select id="etatForme" required>
-                            <option value="">-- Choisir --</option>
-                            <option>Très bon</option>
-                            <option>Bon</option>
-                            <option>Moyen</option>
-                            <option>Faible</option>
-                            <option>Très faible</option>
-                        </select>
-                        <label for="environnement">Environnement</label>
-                        <textarea id="environnement" rows="3" placeholder="Décrire l'environnement..."></textarea>
-                        <label for="photos">Photos (max 3)</label>
-                        <input type="file" id="photos" accept="image/*" multiple />
-                        <div id="photosPreview"></div>
-                        <button type="submit">Envoyer la fiche</button>
-                        <button type="button" id="btnCancelForm">Annuler</button>
-                    </form>
-                </div>
-
-                <div id="stepSuccess" style="display:none;">
-                    <h2>✅ Fiche envoyée avec succès !</h2>
-                    <button id="btnCloseSuccess">Fermer</button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    console.log("Modal HTML injected dynamically via JS.");
-}
-
-window.login = async function() {
-    console.log("LOGIN: Fonction login() appelée.");
-    const email = document.getElementById("email")?.value.trim();
-    const password = document.getElementById("password")?.value.trim();
-    const message = document.getElementById("message");
-    const loader = document.getElementById("loader");
-    const form = document.querySelector(".viiveo-login");
-    const missionsBlock = document.querySelector(".viiveo-missions");
-
-    if (!email || !password) {
-        if (message) message.textContent = "Champs requis.";
-        console.log("LOGIN: Champs email/password requis.");
-        return;
-    }
-    if (message) message.textContent = "";
-    window.show(loader, true);
-    tempDisable(document.querySelector(".viiveo-login button"), 3000);
-    console.log("LOGIN: Tentative de connexion avec email:", email);
-
-    try {
-        const callbackName = 'cbLogin' + Date.now();
-        if (!window.webAppUrl) {
-            console.error("LOGIN ERROR: window.webAppUrl n'est pas défini !");
-            if (message) message.textContent = "Erreur de configuration: URL de l'application manquante.";
-            return;
-        }
-        const url = `${window.webAppUrl}?type=loginpresta&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
-        console.log("LOGIN: URL d'API générée:", url);
-        const data = await window.callApiJsonp(url, callbackName); // Utilisation de window.callApiJsonp
-        console.log("LOGIN: Réponse de l'API de login:", data);
-        if (!data.success) {
-            if (message) message.textContent = data.message || "Connexion échouée.";
-            console.log("LOGIN: Connexion échouée. Message:", data.message);
-            return;
-        }
-
-        window.setPrestataireData(data.email, data.prenom, data.nom);
-
-        window.show(form, false);
-        window.show(missionsBlock, true);
-        await window.loadMissions(window.currentEmail); // Utilisation de window.loadMissions
-        console.log("LOGIN: Missions chargées après connexion réussie.");
-    } catch (err) {
-        if (message) message.textContent = "Erreur serveur ou réseau.";
-        console.error("LOGIN ERROR: Erreur dans la fonction login():", err);
-    } finally {
-        window.show(loader, false);
-        console.log("LOGIN: Fonction login() terminée.");
-    }
-};
-
-/**
- * Charge et affiche les missions pour le prestataire donné, en les catégorisant
- * par statut (en attente, planifiées, en cours, terminées).
- * Gère également l'affichage du loader et des conteneurs de missions.
- *
- * @param {string} emailToLoad L'adresse email du prestataire pour laquelle charger les missions.
- */
-window.loadMissions = async function(emailToLoad) {
-    // 1. Récupération des conteneurs DOM
-    const contAttente = document.getElementById("missions-attente");
-    const contAvenir = document.getElementById("missions-a-venir");
-    const contEnCours = document.getElementById("missions-en-cours"); // NOUVEAU : Conteneur pour missions en cours
-    const contTerminees = document.getElementById("missions-terminees");
-
-    // Conteneur parent pour tous les tableaux de missions (pour masquer/afficher d'un coup)
-    const mainMissionsDisplay = document.getElementById("main-missions-display");
-    // Le loader global
-    const globalLoader = document.getElementById("global-loader");
-
-    // Vérification que tous les conteneurs nécessaires existent
-    if (!contAttente || !contAvenir || !contEnCours || !contTerminees || !mainMissionsDisplay || !globalLoader) {
-        console.error("LOAD MISSIONS ERROR: Un ou plusieurs conteneurs de missions/loader sont introuvables dans le DOM.");
-        // Gérer cette erreur visiblement pour l'utilisateur si possible
-        alert("Erreur d'affichage : Impossible de trouver tous les éléments de l'interface.");
-        return;
-    }
-
-    // 2. Afficher le loader et masquer les conteneurs de missions au début du chargement
-    globalLoader.style.display = 'block';
-    mainMissionsDisplay.style.display = 'none';
-
-    // Afficher des messages "Chargement..." dans chaque section (facultatif si le loader global suffit)
-    contAttente.innerHTML = "Chargement...";
-    contAvenir.innerHTML = "Chargement...";
-    contEnCours.innerHTML = "Chargement...";
-    contTerminees.innerHTML = "Chargement...";
-
-    try {
-        const callbackName = 'cbMissions' + Date.now();
-        if (!window.webAppUrl) {
-            console.error("LOAD MISSIONS ERROR: window.webAppUrl n'est pas défini !");
-            alert("Erreur de configuration: URL de l'application manquante pour charger les missions.");
-            // Cacher le loader et afficher un message d'erreur persistant si l'URL manque
-            globalLoader.style.display = 'none';
-            mainMissionsDisplay.innerHTML = "<p class='error-message'>Erreur de configuration: URL de l'application manquante.</p>";
-            mainMissionsDisplay.style.display = 'block';
-            return;
-        }
-
-        // 3. Appel de l'API backend pour récupérer les missions
-        const url = `${window.webAppUrl}?type=missionspresta&email=${encodeURIComponent(emailToLoad)}`;
-        console.log("LOAD MISSIONS: URL d'API générée:", url);
-        const data = await window.callApiJsonp(url, callbackName);
-        console.log("LOAD MISSIONS: Réponse de l'API des missions:", data);
-
-        // 4. Traitement de la réponse de l'API
-        if (!data.success || !Array.isArray(data.missions)) {
-            alert("Erreur lors du chargement des missions.");
-            console.warn("LOAD MISSIONS: Données de missions invalides ou échec.", data);
-            // Cacher le loader et afficher un message d'erreur
-            globalLoader.style.display = 'none';
-            mainMissionsDisplay.innerHTML = `<p class='error-message'>${data.message || 'Erreur lors du chargement des missions.'}</p>`;
-            mainMissionsDisplay.style.display = 'block';
-            return;
-        }
-
-        // 5. Filtrage des missions par statut
-        const missions = data.missions;
-        const missionsAttente = missions.filter(m => m.statut && String(m.statut).toLowerCase() === "en attente");
-        const missionsValidees = missions.filter(m => m.statut && (String(m.statut).toLowerCase() === "confirmée" || String(m.statut).toLowerCase() === "validée"));
-        const missionsEnCours = missions.filter(m => m.statut && String(m.statut).toLowerCase() === "en cours");
-        const missionsTerminees = missions.filter(m => m.statut && (String(m.statut).toLowerCase() === "terminée" || String(m.statut).toLowerCase() === "clôturée"));
-
-        // 6. Rendu des tableaux dans leurs conteneurs respectifs
-        contAttente.innerHTML = renderTable(missionsAttente, 'attente');
-        contAvenir.innerHTML = renderTable(missionsValidees, 'validee');
-        contEnCours.innerHTML = renderTable(missionsEnCours, 'enCours');
-        contTerminees.innerHTML = renderTable(missionsTerminees, 'terminee');
-
-        // 7. Attacher les écouteurs d'événements aux boutons nouvellement rendus
-        attachMissionButtonListeners();
-
-        // 8. Masquer le loader et afficher les conteneurs de missions après le succès
-        globalLoader.style.display = 'none';
-        mainMissionsDisplay.style.display = 'block';
-
-        console.log("LOAD MISSIONS: Tableaux de missions rendus et écouteurs attachés avec succès.");
-
-    } catch (e) {
-        // 9. Gestion des erreurs lors de l'appel API ou du traitement
-        alert("Erreur serveur lors du chargement des missions.");
-        console.error("LOAD MISSIONS ERROR: Erreur dans loadMissions():", e);
-        // Cacher le loader et afficher un message d'erreur
-        globalLoader.style.display = 'none';
-        mainMissionsDisplay.innerHTML = `<p class='error-message'>Erreur lors du chargement des missions: ${e.message}</p>`;
-        mainMissionsDisplay.style.display = 'block';
-    }
-};
-function renderTable(missions, type = "") {
-    if (!missions.length) return "<p>Aucune mission.</p>";
-    let html = `<table class="missions-table"><thead><tr><th>ID</th><th>Client</th><th>Adresse</th><th>Service</th><th>Date</th><th>Heure</th>`;
-    if (type === "attente" || type === "validee" || type === "enCours") { // Afficher "Actions" seulement si des actions sont possibles
-        html += "<th>Actions</th>";
-    }
-    html += "</tr></thead><tbody>";
-
-    missions.forEach(m => {
-        let formattedHeure = "N/A";
-        let displayDate = "Date inconnue";
-
-        if (m.date) {
-            const parts = String(m.date).split('/');
-            let isoDate = String(m.date);
-
-            if (parts.length === 3) {
-                isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            if (!window.currentEmail) {
+                alert("Erreur: Données du prestataire manquantes pour l'envoi.");
+                console.error("Tentative d'envoi de formulaire sans email prestataire.");
+                return;
             }
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
 
             try {
-                const dateObj = new Date(isoDate);
-                if (!isNaN(dateObj.getTime())) {
-                    displayDate = dateObj.toLocaleDateString('fr-FR');
-                }
-            } catch (e) {
-                console.warn("Erreur de parsing de la date pour la mission", m.id, e);
-            }
-
-            if (m.heure) {
+                let finalLat = null;
+                let finalLon = null;
                 try {
-                    const dateTimeString = `${isoDate}T${m.heure}`;
-                    const fullDate = new Date(dateTimeString);
-                    if (!isNaN(fullDate.getTime())) {
-                        formattedHeure = `${String(fullDate.getHours()).padStart(2, '0')}h${String(fullDate.getMinutes()).padStart(2, '0')}`;
-                    } else {
-                        console.warn("Failed to parse full date/time for mission", m.id, dateTimeString);
-                    }
-                } catch (e) {
-                    console.warn("Erreur de parsing de l'heure pour la mission", m.id, e);
+                    const position = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+                    });
+                    finalLat = position.coords.latitude;
+                    finalLon = position.coords.longitude;
+                    console.log("✅ Géolocalisation de fin capturée :", finalLat, finalLon);
+                } catch (geoError) {
+                    alert("❌ Erreur de géolocalisation pour la clôture. Veuillez réessayer.");
+                    console.error("❌ Erreur de géolocalisation de fin:", geoError);
+                    if (submitBtn) submitBtn.disabled = false;
+                    return;
                 }
+
+                const heureFin = new Date().toISOString();
+                const formData = new FormData();
+                
+                formData.append("type", "envoyerFiche");
+                formData.append("missionId", window.currentMissionId);
+                formData.append("prenomClient", window.currentClientPrenom);
+                formData.append("nomClient", window.currentClientNom);
+                formData.append("obsDate", document.getElementById("obsDate").value);
+                formData.append("etatSante", document.getElementById("etatSante").value);
+                formData.append("etatForme", document.getElementById("etatForme").value);
+                formData.append("environnement", document.getElementById("environnement").value);
+                
+                formData.append("latitudeDebut", window.currentLatitude);
+                formData.append("longitudeDebut", window.currentLongitude);
+                formData.append("latitudeFin", finalLat);
+                formData.append("longitudeFin", finalLon);
+                
+                formData.append("heureDebut", window.heureDebut);
+                formData.append("heureFin", heureFin);
+                formData.append("prestatairePrenom", window.currentPrenom);
+                formData.append("prestataireNom", window.currentNom);
+                formData.append("prestataireEmail", window.currentEmail);
+
+                for (const file of photosInput.files) {
+                    formData.append("photos", file);
+                }
+                
+                const response = await fetch(webAppUrl, {
+                    method: "POST",
+                    body: formData,
+                });
+
+                const json = await response.json();
+
+                if (json.success) {
+                    document.getElementById("stepForm").style.display = "none";
+                    document.getElementById("stepSuccess").style.display = "flex";
+                    if (window.currentEmail) {
+                        await loadMissions(window.currentEmail);
+                    }
+                } else {
+                    alert("Erreur : " + (json.message || "Envoi échoué"));
+                }
+            } catch (err) {
+                alert("Erreur réseau ou du serveur lors de l'envoi de la fiche.");
+                console.error("Erreur lors de l'envoi de la fiche:", err);
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
             }
-        }
+        });
+    }
 
-        const clientName = m.client && String(m.client).trim() !== "" ? String(m.client) : "Client inconnu";
-
-        html += `<tr>
-            <td data-label="ID">${m.id || 'N/A'}</td>
-            <td data-label="Client">${clientName}</td>
-            <td data-label="Adresse">${m.adresse || 'N/A'}</td>
-            <td data-label="Service">${m.service || 'N/A'}</td>
-            <td data-label="Date">${displayDate}</td>
-            <td data-label="Heure">${formattedHeure}</td>`;
-
-        if (type === "attente") {
-            html += `<td data-label="Actions" class="actions">
-            <button class="btn-action btn-validate" data-mission-id="${m.id}" data-action-type="validate">✅</button>
-            <button class="btn-action btn-refuse" data-mission-id="${m.id}" data-action-type="refuse">❌</button>
-            </td>`;
-        } else if (type === "validee") { // Missions planifiées : Seul le bouton Démarrer apparaît
-    html += `<td data-label="Actions" class="actions">
-    <button class="btn-action btn-start" data-mission-id="${m.id}" data-client-prenom="${m.clientPrenom || ''}" data-client-nom="${m.clientNom || ''}" data-action-type="start">▶️</button>
-    </td>`;
-} else if (type === "enCours") { // Missions en cours : Seul le bouton Clôturer apparaît
-    html += `<td data-label="Actions" class="actions">
-    <button class="btn-action btn-cloturer" data-mission-id="${m.id}" data-client-prenom="${m.clientPrenom || ''}" data-client-nom="${m.clientNom || ''}" data-action-type="cloturer">🏁</button>
-    </td>`;
-}
-        // Pour type === "terminee", aucune action n'est ajoutée ici, ce qui est le comportement souhaité.
-
-        html += "</tr>";
-    });
-
-    html += "</tbody></table>";
-    return html;
-}
-// Assurez-vous que cette fonction est appelée après le rendu des tableaux.
-// Elle est déjà appelée dans votre window.loadMissions.
-// Assurez-vous que cette fonction est appelée après le rendu des tableaux.
-// Elle est déjà appelée dans votre window.loadMissions.
-function attachMissionButtonListeners() {
-    // Écouteurs pour les boutons de validation/refus (missions en attente)
-    document.querySelectorAll('.btn-validate').forEach(button => {
-        button.onclick = async function() {
-            const missionId = this.dataset.missionId;
-            // Votre logique existante pour valider la mission
-            console.log(`Validation de la mission ${missionId}`);
-            // Exemple d'appel API (adaptez à votre fonction validerMission)
-            const url = `${window.webAppUrl}?type=validermission&missionId=${encodeURIComponent(missionId)}`;
-            const response = await window.callApiJsonp(url, 'cbValidate' + Date.now());
-            if (response.success) {
-                alert(`Mission ${missionId} validée avec succès !`);
-                window.loadMissions(window.currentEmail); // Recharger les missions avec window.currentEmail
-            } else {
-                alert(`Erreur lors de la validation de la mission ${missionId}: ${response.message}`);
+    // Gestion des boutons de la modale
+    const modal = document.getElementById("modalOverlay");
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target.id === 'btnCloseModal' || e.target.id === 'btnCancelQR' || e.target.id === 'btnCancelForm' || e.target.id === 'btnCloseSuccess') {
+                closeModal();
             }
-        };
-    });
-
-    document.querySelectorAll('.btn-refuse').forEach(button => {
-        button.onclick = async function() {
-            const missionId = this.dataset.missionId;
-            // Votre logique existante pour refuser la mission
-            console.log(`Refus de la mission ${missionId}`);
-            // Exemple d'appel API (adaptez à votre fonction refuserMission)
-            const url = `${window.webAppUrl}?type=refusermission&missionId=${encodeURIComponent(missionId)}`;
-            const response = await window.callApiJsonp(url, 'cbRefuse' + Date.now());
-            if (response.success) {
-                alert(`Mission ${missionId} refusée avec succès.`);
-                window.loadMissions(window.currentEmail); // Recharger les missions avec window.currentEmail
-            } else {
-                alert(`Erreur lors du refus de la mission ${missionId}: ${response.message}`);
-            }
-        };
-    });
-
-    // Écouteur pour le bouton "Start" (missions validées)
-    document.querySelectorAll('.btn-start').forEach(button => {
-        button.onclick = function() { // Reste synchrone pour ouvrir la modale
-            const missionId = this.dataset.missionId;
-            const clientPrenom = this.dataset.clientPrenom;
-            const clientNom = this.dataset.clientNom;
-            console.log(`Démarrage de la mission ${missionId} pour ${clientPrenom} ${clientNom}`);
-
-            // Appel de la fonction openModalStartPrestation existante
-            window.openModalStartPrestation(missionId, clientPrenom, clientNom);
-        };
-    });
-
-    // --- ÉCOUTEUR POUR LE BOUTON "CLÔTURER" ---
-    // Écouteur pour les boutons "Clôturer" (missions en cours)
-    document.querySelectorAll('.btn-cloturer').forEach(button => {
-        button.onclick = function() {
-            const missionId = this.dataset.missionId;
-            const clientPrenom = this.dataset.clientPrenom || '';
-            const clientNom = this.dataset.clientNom || '';
-            console.log(`Clôture de la mission ${missionId}`);
-            
-            // On appelle la NOUVELLE fonction pour la clôture
-            window.openModalCloturerPrestation(missionId, clientPrenom, clientNom);
-        };
-    });
-    // --- FIN ÉCOUTEUR ---
-}
-// Fonctions de gestion des clics (maintenant appelées par addEventListener)
-async function handleValidateMission(event) {
-    const missionId = event.currentTarget.dataset.missionId;
-    console.log(`handleValidateMission appelée pour ID: ${missionId}`);
-    // Remplacer confirm() par une modale personnalisée si possible
-    if (!window.confirm("Confirmer la validation ?")) return;
-    const callbackName = 'cbValider' + Date.now();
-    const url = `${window.webAppUrl}?type=validerMission&id=${encodeURIComponent(missionId)}`;
-    await window.callApiJsonp(url, callbackName);
-    alert("Mission validée.");
-    if (window.currentEmail) await window.loadMissions(window.currentEmail);
-}
-
-async function handleRefuseMission(event) {
-    const missionId = event.currentTarget.dataset.missionId;
-    console.log(`handleRefuseMission appelée pour ID: ${missionId}`);
-    // Remplacer prompt() par une modale personnalisée si possible
-    const alt = prompt("Nouvelle date/heure ?");
-    if (!alt) return;
-    const callbackName = 'cbRefuser' + Date.now();
-    const url = `${window.webAppUrl}?type=refuserMission&id=${encodeURIComponent(missionId)}&alternatives=${encodeURIComponent(alt)}`;
-    await window.callApiJsonp(url, callbackName);
-    alert("Proposition envoyée.");
-    if (window.currentEmail) await window.loadMissions(window.currentEmail);
-}
-
-async function handleStartMission(event) {
-    const missionId = event.currentTarget.dataset.missionId;
-    const clientPrenom = event.currentTarget.dataset.clientPrenom;
-    const clientNom = event.currentTarget.dataset.clientNom;
-    console.log(`handleStartMission appelée pour ID: ${missionId}, Client: ${clientPrenom} ${clientNom}`);
-    window.openModalStartPrestation(missionId, clientPrenom, clientNom);
-}
-
-
-window.validerMission = handleValidateMission; // Garder pour la compatibilité si d'autres parties l'appellent directement
-window.refuserMission = handleRefuseMission; // Garder pour la compatibilité
-// window.openModalStartPrestation est déjà globale
-
-window.callApiJsonp = function(url, callbackName) {
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = `${url}&callback=${callbackName}`;
-        document.body.appendChild(script);
-
-        window[callbackName] = (data) => {
-            console.log(`JSONP Callback ${callbackName} reçu:`, data);
-            resolve(data);
-            script.remove();
-            delete window[callbackName];
-        };
-
-        script.onerror = (error) => {
-            console.error(`Erreur de chargement du script JSONP pour ${url}:`, error);
-            reject(new Error(`Erreur réseau ou de chargement pour l'API: ${url}`));
-            script.remove();
-            delete window[callbackName];
-        };
-
-        console.log(`JSONP: Requête lancée pour ${url} avec callback ${callbackName}`);
-    });
-};
-
-
-// Point d'entrée principal du script
-document.addEventListener('DOMContentLoaded', () => {
-    initializeLoginForm();
-
-    createAndInjectModalHtml();
-
-    setTimeout(() => {
-        initializeModalListeners();
-        console.log("initializeModalListeners appelée après injection et délai.");
-    }, 100);
+        });
+    }
 });
+
 
