@@ -1,4 +1,4 @@
-// viiveo-app.js 
+// viiveo-app.js 040825 11:50
 
 // Variables globales pour l'état de la mission et du prestataire
 let currentMissionId = null;
@@ -892,4 +892,3 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("initializeModalListeners appelée après injection et délai.");
     }, 100);
 });
-
