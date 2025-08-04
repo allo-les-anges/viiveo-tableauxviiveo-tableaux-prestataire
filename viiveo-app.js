@@ -1,4 +1,4 @@
-// viiveo-app.js - À placer sur GitHub
+// viiveo-app.js 
 
 // Variables globales pour l'état de la mission et du prestataire
 let currentMissionId = null;
@@ -892,3 +892,4 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("initializeModalListeners appelée après injection et délai.");
     }, 100);
 });
+
