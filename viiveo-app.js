@@ -524,7 +524,7 @@ function createAndInjectModalHtml() {
     console.log("Modal HTML injected dynamically via JS.");
 }
 
-window.login = async function() {
+window.handleLogin = async function() {
     console.log("LOGIN: Fonction login() appelée.");
     const email = document.getElementById("email")?.value.trim();
     const password = document.getElementById("password")?.value.trim();
@@ -893,3 +893,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 100); // <-- La fonction setTimeout se termine ici
 }); // <-- Le document.addEventListener se termine ici
 }
+
