@@ -879,7 +879,6 @@ window.callApiJsonp = function(url, callbackName) {
     });
 };
 
-
 // Point d'entrée principal du script
 document.addEventListener('DOMContentLoaded', () => {
     initializeLoginForm();
