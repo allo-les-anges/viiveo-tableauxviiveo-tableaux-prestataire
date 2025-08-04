@@ -462,18 +462,18 @@ function initializeModalListeners() {
 function initializeLoginForm() {
     const loginForm = document.getElementById("loginForm");
     console.log("DEBUG initializeLoginForm: loginForm element:", loginForm);
-    console.log("DEBUG initializeLoginForm: typeof window.login:", typeof window.login);
+    console.log("DEBUG initializeLoginForm: typeof window.handleLogin:", typeof window.handleLogin); // CORRECTION ici : on cherche handleLogin
 
-    if (loginForm && typeof window.login === 'function') {
-        loginForm.removeEventListener("submit", window.login);
-        loginForm.addEventListener("submit", window.login);
+    if (loginForm && typeof window.handleLogin === 'function') { // CORRECTION ici
+        loginForm.removeEventListener("submit", window.handleLogin); // CORRECTION ici
+        loginForm.addEventListener("submit", window.handleLogin); // CORRECTION ici
         console.log("Écouteur de soumission ajouté au formulaire de connexion.");
     } else {
-        console.warn("Formulaire de connexion ou fonction 'login' non disponible. Nouvelle tentative...");
+        console.warn("Formulaire de connexion ou fonction 'handleLogin' non disponible. Nouvelle tentative...");
         setTimeout(initializeLoginForm, 200);
     }
 }
-
+    
 function createAndInjectModalHtml() {
     const modalHtml = `
         <div id="modalOverlay" style="display: none;">
@@ -525,7 +525,12 @@ function createAndInjectModalHtml() {
 }
 
 window.handleLogin = async function() {
-    console.log("LOGIN: Fonction login() appelée.");
+    console.log("LOGIN: Fonction handleLogin() appelée."); // Renommé le log pour plus de clarté
+    // ... (le reste de la fonction handleLogin) ...
+    console.error("LOGIN ERROR: Erreur dans la fonction handleLogin():", err); // Renommé le log
+    // ...
+    console.log("LOGIN: Fonction handleLogin() terminée."); // Renommé le log
+};
     const email = document.getElementById("email")?.value.trim();
     const password = document.getElementById("password")?.value.trim();
     const message = document.getElementById("message");
@@ -890,7 +895,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         initializeModalListeners();
         console.log("initializeModalListeners appelée après injection et délai.");
-    }, 100); // <-- La fonction setTimeout se termine ici
-}); // <-- Le document.addEventListener se termine ici
+    }, 100);
+});
 }
+
 
