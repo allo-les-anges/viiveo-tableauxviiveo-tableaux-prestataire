@@ -369,78 +369,96 @@ function initializeModalListeners() {
         });
 
         obsForm.addEventListener("submit", async e => {
-            e.preventDefault();
+    e.preventDefault();
 
-            if (photosInput.files.length > 3) {
-                alert("Maximum 3 photos autorisées.");
-                return;
-            }
+    if (photosInput.files.length > 3) {
+        alert("Maximum 3 photos autorisées.");
+        return;
+    }
 
-            if (!window.currentEmail) {
-                alert("Erreur: Données du prestataire manquantes pour l'envoi.");
-                console.error("Tentative d'envoi de formulaire sans email prestataire.");
-                return;
-            }
+    if (!window.currentEmail) {
+        alert("Erreur: Données du prestataire manquantes pour l'envoi.");
+        console.error("Tentative d'envoi de formulaire sans email prestataire.");
+        return;
+    }
 
-            const heureFin = new Date().toISOString();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
 
-            const formData = new FormData();
-            formData.append("type", "envoyerFiche");
-            formData.append("missionId", window.currentMissionId);
-            formData.append("prenomClient", window.currentClientPrenom);
-            formData.append("nomClient", window.currentClientNom);
-            formData.append("obsDate", obsDateInput.value);
-            formData.append("etatSante", etatSanteInput.value);
-            formData.append("etatForme", etatFormeInput.value);
-            formData.append("environnement", environnementInput.value);
-            formData.append("latitude", window.currentLatitude);
-            formData.append("longitude", window.currentLongitude);
-            formData.append("heureDebut", window.heureDebut);
-            formData.append("heureFin", heureFin);
-            formData.append("prestatairePrenom", window.currentPrenom);
-            formData.append("prestataireNom", window.currentNom);
-            formData.append("prestataireEmail", window.currentEmail);
+    try {
+        // RÉCUPÉRATION DES COORDONNÉES DE FIN DE MISSION
+        let finalLat = null;
+        let finalLon = null;
+        try {
+            console.log("Tentative de récupération de la géolocalisation de fin...");
+            const position = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+            });
+            finalLat = position.coords.latitude;
+            finalLon = position.coords.longitude;
+            console.log("✅ Géolocalisation de fin capturée :", finalLat, finalLon);
+        } catch (geoError) {
+            alert("❌ Erreur de géolocalisation pour la clôture. Veuillez réessayer.");
+            console.error("❌ Erreur de géolocalisation de fin:", geoError);
+            if (submitBtn) submitBtn.disabled = false;
+            return;
+        }
 
-            // DÉBOGAGE : Ajoutez cette ligne pour voir si des photos sont bien sélectionnées
-            console.log(`Nombre de photos à envoyer : ${photosInput.files.length}`);
+        const heureFin = new Date().toISOString();
+        const formData = new FormData();
+        
+        formData.append("type", "envoyerFiche");
+        formData.append("missionId", window.currentMissionId);
+        formData.append("prenomClient", window.currentClientPrenom);
+        formData.append("nomClient", window.currentClientNom);
+        formData.append("obsDate", obsDateInput.value);
+        formData.append("etatSante", etatSanteInput.value);
+        formData.append("etatForme", etatFormeInput.value);
+        formData.append("environnement", environnementInput.value);
+        
+        // CORRECTION MAJEURE : Ajout des variables de géolocalisation de début et de fin
+        formData.append("latitudeDebut", window.currentLatitude);
+        formData.append("longitudeDebut", window.currentLongitude);
+        formData.append("latitudeFin", finalLat);
+        formData.append("longitudeFin", finalLon);
+        
+        formData.append("heureDebut", window.heureDebut);
+        formData.append("heureFin", heureFin);
+        formData.append("prestatairePrenom", window.currentPrenom);
+        formData.append("prestataireNom", window.currentNom);
+        formData.append("prestataireEmail", window.currentEmail);
 
-            for (const file of photosInput.files) {
-                formData.append("photos", file);
-            }
+        console.log(`➡️ Tentative d'ajout des photos à l'objet FormData. Nombre de fichiers : ${photosInput.files.length}`);
+        for (const file of photosInput.files) {
+            formData.append("photos", file);
+            console.log(`✅ Ajout du fichier : ${file.name}`);
+        }
+        
+        console.log("➡️ Lancement de la requête fetch pour envoyer la fiche.");
 
-            try {
-                const response = await fetch(window.webAppUrl, {
-                    method: "POST",
-                    body: formData,
-                });
-
-                const json = await response.json();
-
-                if (json.success) {
-                    stepForm.style.display = "none";
-                    stepSuccess.style.display = "flex";
-                    if (typeof window.loadMissions === 'function' && window.currentEmail) {
-                        window.loadMissions(window.currentEmail);
-                    }
-                } else {
-                    alert("Erreur : " + (json.message || "Envoi échoué"));
-                }
-            } catch (err) {
-                alert("Erreur réseau ou du serveur lors de l'envoi de la fiche.");
-                console.error("Erreur lors de l'envoi de la fiche:", err);
-            }
+        const response = await fetch(window.webAppUrl, {
+            method: "POST",
+            body: formData,
         });
 
-        if (document.querySelector("#btnCancelQR")) document.querySelector("#btnCancelQR").onclick = closeModal;
-        if (document.querySelector("#btnCancelForm")) document.querySelector("#btnCancelForm").onclick = closeModal;
-        if (document.querySelector("#btnCloseSuccess")) document.querySelector("#btnCloseSuccess").onclick = closeModal;
+        const json = await response.json();
 
-        console.log("Écouteurs de la modale d'observation initialisés.");
-    } else {
-        console.warn("Certains éléments de la modale d'observation sont manquants. Nouvelle tentative d'initialisation des écouteurs de modale...");
-        setTimeout(initializeModalListeners, 100);
+        if (json.success) {
+            stepForm.style.display = "none";
+            stepSuccess.style.display = "flex";
+            if (typeof window.loadMissions === 'function' && window.currentEmail) {
+                window.loadMissions(window.currentEmail);
+            }
+        } else {
+            alert("Erreur : " + (json.message || "Envoi échoué"));
+        }
+    } catch (err) {
+        alert("Erreur réseau ou du serveur lors de l'envoi de la fiche.");
+        console.error("Erreur lors de l'envoi de la fiche:", err);
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
     }
-}
+});
 function initializeLoginForm() {
     const loginForm = document.getElementById("loginForm");
     console.log("DEBUG initializeLoginForm: loginForm element:", loginForm);
