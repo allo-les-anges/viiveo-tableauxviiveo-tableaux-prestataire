@@ -10,6 +10,8 @@ let heureDebut = null;
 // Ajoutez cette variable globale pour l'instance du scanner.
 let qrScannerInstance = null;
 
+window.webAppUrl = "http://localhost:3000"; // REMPLACEZ PAR VOTRE URL RÉELLE DU PROXY OU APPS SCRIPT
+
 function setTodayDate(obsDateInput) {
     if (obsDateInput) {
         obsDateInput.value = new Date().toISOString().split("T")[0];
@@ -802,3 +804,4 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("initializeModalListeners appelée après injection et délai.");
     }, 100);
 });
+
