@@ -43,6 +43,7 @@ function closeModal() {
     }
     if (fullScreenLoader) { // S'assurer que le loader plein écran est masqué
         fullScreenLoader.style.display = "none";
+        fullScreenLoader.style.opacity = '0'; // Assurez-vous que l'opacité est aussi à 0
     }
     clearFormFields();
 
@@ -441,7 +442,10 @@ function initializeModalListeners() {
                     alert("❌ Erreur de géolocalisation pour la clôture. Veuillez réessayer.");
                     console.error("❌ Erreur de géolocalisation de fin:", geoError);
                     if (submitBtn) submitBtn.disabled = false;
-                    if (fullScreenLoader) fullScreenLoader.style.display = 'none'; // Masquer le loader en cas d'erreur de géolocalisation
+                    if (fullScreenLoader) { // Masquer le loader en cas d'erreur de géolocalisation
+                        fullScreenLoader.style.display = 'none';
+                        fullScreenLoader.style.opacity = '0';
+                    }
                     return;
                 }
                 
@@ -514,7 +518,10 @@ function initializeModalListeners() {
                 console.error("Erreur lors de l'envoi de la fiche:", err);
             } finally {
                 if (submitBtn) submitBtn.disabled = false;
-                if (fullScreenLoader) fullScreenLoader.style.display = 'none'; // Masquer le loader dans le bloc finally
+                if (fullScreenLoader) { // Masquer le loader dans le bloc finally
+                    fullScreenLoader.style.display = 'none';
+                    fullScreenLoader.style.opacity = '0';
+                }
                 console.log("Loader plein écran masqué.");
             }
         });
@@ -562,11 +569,17 @@ function createAndInjectModalHtml() {
                 color: white; /* Couleur du texte */
                 font-size: 1.2em;
                 text-align: center;
-                /* Assurez-vous qu'il est initialement caché */
-                display: none; 
+                /* Initialement caché via CSS pour une meilleure gestion par JS */
                 opacity: 0;
-                transition: opacity 0.3s ease-in-out; /* Ajoute une transition douce */
+                visibility: hidden; /* Utiliser visibility pour éviter les interactions */
+                transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out; /* Ajoute une transition douce */
             }
+            /* Règle pour afficher le loader */
+            #fullScreenLoader.is-visible {
+                opacity: 1;
+                visibility: visible;
+            }
+
             #fullScreenLoader .loader {
                 width: 50px; /* Plus grand pour le loader central */
                 height: 50px;
@@ -620,13 +633,15 @@ function createAndInjectModalHtml() {
                 </div>
             </div>
         </div>
-        <!-- NOUVEAU LOADER PLEIN ÉCRAN POUR L'ENVOI DE LA FICHE -->
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    // Injection du fullScreenLoader directement dans le body
+    document.body.insertAdjacentHTML('beforeend', `
         <div id="fullScreenLoader">
             <div class="loader"></div>
             <p>Cette opération peut prendre quelques secondes...</p>
         </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    `);
     console.log("Modal HTML injected dynamically via JS.");
 }
 
