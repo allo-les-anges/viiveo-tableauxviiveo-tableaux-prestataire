@@ -1,4 +1,4 @@
-// viiveo-app.js 040825 11:54
+// viiveo-app.js 050825 10:30 (Mise à jour pour envoi de photos en Base64)
 
 // Variables globales pour l'état de la mission et du prestataire
 let currentMissionId = null;
@@ -10,7 +10,7 @@ let heureDebut = null;
 // Ajoutez cette variable globale pour l'instance du scanner.
 let qrScannerInstance = null;
 
-window.webAppUrl = "https://gaetano1747.gm-harchies.workers.dev"; // C'est l'URL de votre Cloudflare Worker
+window.webAppUrl = "https://gaetano1747.gm-harchies.workers.dev"; // URL de votre Cloudflare Worker
 
 function setTodayDate(obsDateInput) {
     if (obsDateInput) {
@@ -74,7 +74,6 @@ function showForm() {
     setTodayDate(obsDateInput);
 }
 
-// CORRECTION : Suppression de la fonction en double. Celle-ci est la bonne version.
 function getGeolocationAndShowForm() {
     const geolocationMessage = document.getElementById("geolocationMessage");
 
@@ -331,21 +330,21 @@ function initializeModalListeners() {
 
         obsForm.addEventListener("submit", async e => {
             e.preventDefault();
-        
+            
             if (photosInput.files.length > 3) {
                 alert("Maximum 3 photos autorisées.");
                 return;
             }
-        
+            
             if (!window.currentEmail) {
                 alert("Erreur: Données du prestataire manquantes pour l'envoi.");
                 console.error("Tentative d'envoi de formulaire sans email prestataire.");
                 return;
             }
-        
+            
             const submitBtn = e.target.querySelector('button[type="submit"]');
             if (submitBtn) submitBtn.disabled = true;
-        
+            
             try {
                 let finalLat = null;
                 let finalLon = null;
@@ -363,43 +362,67 @@ function initializeModalListeners() {
                     if (submitBtn) submitBtn.disabled = false;
                     return;
                 }
-        
+                
                 const heureFin = new Date().toISOString();
-                const formData = new FormData();
                 
-                formData.append("type", "envoyerFiche");
-                formData.append("missionId", window.currentMissionId);
-                formData.append("prenomClient", window.currentClientPrenom);
-                formData.append("nomClient", window.currentClientNom);
-                formData.append("obsDate", obsDateInput.value);
-                formData.append("etatSante", etatSanteInput.value);
-                formData.append("etatForme", etatFormeInput.value);
-                formData.append("environnement", environnementInput.value);
-                formData.append("latitudeDebut", window.currentLatitude);
-                formData.append("longitudeDebut", window.currentLongitude);
-                formData.append("latitudeFin", finalLat);
-                formData.append("longitudeFin", finalLon);
-                formData.append("heureDebut", window.heureDebut);
-                formData.append("heureFin", heureFin);
-                formData.append("prestatairePrenom", window.currentPrenom);
-                formData.append("prestataireNom", window.currentNom);
-                formData.append("prestataireEmail", window.currentEmail);
-        
-                console.log(`➡️ Tentative d'ajout des photos à l'objet FormData. Nombre de fichiers : ${photosInput.files.length}`);
-                for (const file of photosInput.files) {
-                    formData.append("photos", file);
-                    console.log(`✅ Ajout du fichier : ${file.name}`);
-                }
+                // --- DÉBUT MODIFICATION POUR ENVOI JSON AVEC PHOTOS BASE64 ---
+                const photosBase64 = [];
+                const filePromises = Array.from(photosInput.files).map(file => {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            // Le résultat est une URL de données (data:image/jpeg;base64,...)
+                            // Nous extrayons la partie Base64 après la virgule.
+                            const base64String = reader.result.split(',')[1];
+                            photosBase64.push({
+                                data: base64String,
+                                name: file.name,
+                                type: file.type
+                            });
+                            resolve();
+                        };
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+                });
+
+                await Promise.all(filePromises); // Attendre que toutes les photos soient lues en Base64
+
+                const payload = {
+                    type: "envoyerFiche",
+                    missionId: window.currentMissionId,
+                    prenomClient: window.currentClientPrenom,
+                    nomClient: window.currentClientNom,
+                    obsDate: obsDateInput.value,
+                    etatSante: etatSanteInput.value,
+                    etatForme: etatFormeInput.value,
+                    environnement: environnementInput.value,
+                    latitudeDebut: window.currentLatitude,
+                    longitudeDebut: window.currentLongitude,
+                    latitudeFin: finalLat,
+                    longitudeFin: finalLon,
+                    heureDebut: window.heureDebut,
+                    heureFin: heureFin,
+                    prestatairePrenom: window.currentPrenom,
+                    prestataireNom: window.currentNom,
+                    prestataireEmail: window.currentEmail,
+                    photos: photosBase64 // Maintenant, c'est un tableau d'objets {data, name, type}
+                };
                 
-                console.log("➡️ Lancement de la requête fetch pour envoyer la fiche.");
-        
+                console.log(`➡️ Lancement de la requête fetch pour envoyer la fiche (JSON).`);
+                console.log(`Payload JSON (sans les données Base64 complètes pour la console):`, { ...payload, photos: payload.photos.map(p => ({ name: p.name, type: p.type, dataLength: p.data.length })) });
+
                 const response = await fetch(window.webAppUrl, {
                     method: "POST",
-                    body: formData,
+                    headers: {
+                        'Content-Type': 'application/json' // Indiquer que le corps est du JSON
+                    },
+                    body: JSON.stringify(payload), // Envoyer le payload JSON
                 });
-        
+                // --- FIN MODIFICATION POUR ENVOI JSON AVEC PHOTOS BASE64 ---
+                
                 const json = await response.json();
-        
+                
                 if (json.success) {
                     stepForm.style.display = "none";
                     stepSuccess.style.display = "flex";
@@ -691,7 +714,9 @@ function attachMissionButtonListeners() {
         button.onclick = async function() {
             const missionId = this.dataset.missionId;
             console.log(`Refus de la mission ${missionId}`);
-            const url = `${window.webAppUrl}?type=refusermission&missionId=${encodeURIComponent(missionId)}`;
+            const alt = prompt("Nouvelle date/heure ?");
+            if (!alt) return;
+            const url = `${window.webAppUrl}?type=refusermission&missionId=${encodeURIComponent(missionId)}&alternatives=${encodeURIComponent(alt)}`;
             const response = await window.callApiJsonp(url, 'cbRefuse' + Date.now());
             if (response.success) {
                 alert(`Mission ${missionId} refusée avec succès.`);
@@ -804,5 +829,3 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("initializeModalListeners appelée après injection et délai.");
     }, 100);
 });
-
-
