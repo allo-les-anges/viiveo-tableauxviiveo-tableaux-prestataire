@@ -36,8 +36,13 @@ function clearFormFields() {
 
 function closeModal() {
     const modalOverlay = document.getElementById("modalOverlay");
+    const fullScreenLoader = document.getElementById("fullScreenLoader"); // Récupération du loader plein écran
+
     if (modalOverlay) {
         modalOverlay.style.display = "none";
+    }
+    if (fullScreenLoader) { // S'assurer que le loader plein écran est masqué
+        fullScreenLoader.style.display = "none";
     }
     clearFormFields();
 
@@ -92,7 +97,7 @@ async function startQrScanner() {
     const qrReaderElement = document.getElementById("qr-reader");
     const geolocationMessage = document.getElementById("geolocationMessage");
     const stepQR = document.getElementById("stepQR");
-    const qrScannerLoader = document.getElementById("qrScannerLoader"); // Récupération du nouveau loader
+    const qrScannerLoader = document.getElementById("qrScannerLoader"); // Récupération du loader du scanner
 
     if (!qrReaderElement || !stepQR || !geolocationMessage || !qrScannerLoader) {
         console.error("Éléments 'qr-reader' ou loader non trouvés. Le scanner ne peut pas démarrer.");
@@ -317,11 +322,11 @@ function initializeModalListeners() {
     const btnCancelForm = document.getElementById("btnCancelForm");
     const btnCancelQR = document.getElementById("btnCancelQR");
 
-    // Récupération du loader du formulaire
-    const formLoader = document.getElementById("formLoader");
+    // Récupération du loader plein écran
+    const fullScreenLoader = document.getElementById("fullScreenLoader");
 
 
-    if (modalOverlay && stepQR && stepForm && stepSuccess && obsForm && photosInput && photosPreview && clientNameInput && obsDateInput && etatSanteInput && etatFormeInput && environnementInput && btnCloseSuccess && btnCancelForm && btnCancelQR && formLoader) {
+    if (modalOverlay && stepQR && stepForm && stepSuccess && obsForm && photosInput && photosPreview && clientNameInput && obsDateInput && etatSanteInput && etatFormeInput && environnementInput && btnCloseSuccess && btnCancelForm && btnCancelQR && fullScreenLoader) {
         photosInput.addEventListener("change", e => {
             photosPreview.innerHTML = "";
             const files = e.target.files;
@@ -363,7 +368,7 @@ function initializeModalListeners() {
             
             const submitBtn = e.target.querySelector('button[type="submit"]');
             if (submitBtn) submitBtn.disabled = true;
-            if (formLoader) window.show(formLoader, true); // Afficher le loader pour l'envoi du formulaire
+            if (fullScreenLoader) window.show(fullScreenLoader, true); // Afficher le loader plein écran
             
             try {
                 let finalLat = null;
@@ -380,7 +385,7 @@ function initializeModalListeners() {
                     alert("❌ Erreur de géolocalisation pour la clôture. Veuillez réessayer.");
                     console.error("❌ Erreur de géolocalisation de fin:", geoError);
                     if (submitBtn) submitBtn.disabled = false;
-                    if (formLoader) window.show(formLoader, false); // Masquer le loader en cas d'erreur de géolocalisation
+                    if (fullScreenLoader) window.show(fullScreenLoader, false); // Masquer le loader en cas d'erreur de géolocalisation
                     return;
                 }
                 
@@ -454,7 +459,7 @@ function initializeModalListeners() {
                 console.error("Erreur lors de l'envoi de la fiche:", err);
             } finally {
                 if (submitBtn) submitBtn.disabled = false;
-                if (formLoader) window.show(formLoader, false); // Masquer le loader dans le bloc finally
+                if (fullScreenLoader) window.show(fullScreenLoader, false); // Masquer le loader dans le bloc finally
             }
         });
 
@@ -484,6 +489,32 @@ function createAndInjectModalHtml() {
                 0% { transform: rotate(0deg); }
                 100% { transform: rotate(360deg); }
             }
+
+            /* Styles pour le loader plein écran */
+            #fullScreenLoader {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0, 0, 0, 0.7); /* Fond semi-transparent */
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000; /* Assure qu'il est au-dessus des autres éléments */
+                color: white; /* Couleur du texte */
+                font-size: 1.2em;
+                text-align: center;
+            }
+            #fullScreenLoader .loader {
+                width: 50px; /* Plus grand pour le loader central */
+                height: 50px;
+                border-width: 6px;
+            }
+            #fullScreenLoader p {
+                margin-top: 15px;
+            }
         </style>
         <div id="modalOverlay" style="display: none;">
             <div id="modalContent">
@@ -491,7 +522,7 @@ function createAndInjectModalHtml() {
                     <h2>📸 Scanner le QR code client</h2>
                     <div id="qr-reader"></div>
                     <p id="geolocationMessage" style="color: #d32f2f; font-weight: bold; text-align: center; margin-top: 15px; display: none;"></p>
-                    <div id="qrScannerLoader" class="loader" style="display:none;"></div> <!-- NOUVEAU LOADER -->
+                    <div id="qrScannerLoader" class="loader" style="display:none;"></div> <!-- LOADER POUR LE SCANNER QR -->
                     <button id="btnCancelQR">Annuler</button>
                 </div>
 
@@ -520,7 +551,7 @@ function createAndInjectModalHtml() {
                         <div id="photosPreview"></div>
                         <button type="submit">Envoyer la fiche</button>
                         <button type="button" id="btnCancelForm">Annuler</button>
-                        <div id="formLoader" class="loader" style="display:none; margin-top: 10px;"></div> <!-- NOUVEAU LOADER -->
+                        <!-- Le formLoader a été supprimé ici, remplacé par fullScreenLoader -->
                     </form>
                 </div>
 
@@ -529,6 +560,11 @@ function createAndInjectModalHtml() {
                     <button id="btnCloseSuccess">Fermer</button>
                 </div>
             </div>
+        </div>
+        <!-- NOUVEAU LOADER PLEIN ÉCRAN -->
+        <div id="fullScreenLoader" style="display:none;">
+            <div class="loader"></div>
+            <p>Cette opération peut prendre quelques secondes...</p>
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
