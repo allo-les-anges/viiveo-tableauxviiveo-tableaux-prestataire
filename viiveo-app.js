@@ -92,9 +92,10 @@ async function startQrScanner() {
     const qrReaderElement = document.getElementById("qr-reader");
     const geolocationMessage = document.getElementById("geolocationMessage");
     const stepQR = document.getElementById("stepQR");
+    const qrScannerLoader = document.getElementById("qrScannerLoader"); // Récupération du nouveau loader
 
-    if (!qrReaderElement || !stepQR || !geolocationMessage) {
-        console.error("Éléments 'qr-reader' non trouvés. Le scanner ne peut pas démarrer.");
+    if (!qrReaderElement || !stepQR || !geolocationMessage || !qrScannerLoader) {
+        console.error("Éléments 'qr-reader' ou loader non trouvés. Le scanner ne peut pas démarrer.");
         alert("Erreur: Le scanner QR ne peut pas démarrer (élément manquant).");
         closeModal();
         return;
@@ -130,6 +131,8 @@ async function startQrScanner() {
                     const idClient = url.searchParams.get("idclient") || url.searchParams.get("clientId");
                     if (!idClient) throw new Error("QR invalide : idclient manquant");
 
+                    if (qrScannerLoader) window.show(qrScannerLoader, true); // Afficher le loader avant la géolocalisation et l'appel API
+
                     if (navigator.geolocation) {
                         try {
                             const position = await new Promise((resolve, reject) => {
@@ -150,7 +153,8 @@ async function startQrScanner() {
                                 geolocationMessage.style.display = "block";
                                 geolocationMessage.style.color = "#d32f2f";
                             }
-                            console.error("Erreur de géolocalisation lors du scan:", geoError);
+                            if (qrScannerLoader) window.show(qrScannerLoader, false); // Masquer le loader en cas d'erreur de géolocalisation
+                            return; // Sortir si la géolocalisation échoue
                         }
                     } else {
                         if (geolocationMessage) {
@@ -158,11 +162,15 @@ async function startQrScanner() {
                             geolocationMessage.style.display = "block";
                             geolocationMessage.style.color = "#d32f2f";
                         }
+                        if (qrScannerLoader) window.show(qrScannerLoader, false); // Masquer le loader si la géolocalisation n'est pas supportée
+                        return; // Sortir si la géolocalisation n'est pas supportée
                     }
 
                     const fullAppsScriptApiUrl = `${window.webAppUrl}?type=verifqr&idclient=${encodeURIComponent(idClient)}&email=${encodeURIComponent(window.currentEmail)}&latitude=${encodeURIComponent(window.currentLatitude || 'null')}&longitude=${encodeURIComponent(window.currentLongitude || 'null')}`;
                     const callbackName = 'cbVerifyClient' + Date.now();
                     const data = await window.callApiJsonp(fullAppsScriptApiUrl, callbackName);
+
+                    if (qrScannerLoader) window.show(qrScannerLoader, false); // Masquer le loader après l'appel API
 
                     if (!data.success) {
                         alert("❌ " + data.message);
@@ -187,6 +195,7 @@ async function startQrScanner() {
                 } catch (err) {
                     alert("Erreur lors du scan QR : " + (err.message || "Erreur inconnue"));
                     console.error("Erreur dans startQrScanner (callback de succès - détails complètes):", err);
+                    if (qrScannerLoader) window.show(qrScannerLoader, false); // Masquer le loader en cas d'erreur
                     closeModal();
                 }
             },
@@ -196,6 +205,7 @@ async function startQrScanner() {
     } catch (err) {
         alert("Impossible d’activer la caméra. Assurez-vous d'avoir donné les permissions.");
         console.error("Erreur d'initialisation de la caméra (détails complètes):", err);
+        if (qrScannerLoader) window.show(qrScannerLoader, false); // Masquer le loader en cas d'erreur
         closeModal();
     }
 }
@@ -302,7 +312,16 @@ function initializeModalListeners() {
     const etatFormeInput = document.getElementById("etatForme");
     const environnementInput = document.getElementById("environnement");
 
-    if (modalOverlay && stepQR && stepForm && stepSuccess && obsForm && photosInput && photosPreview && clientNameInput && obsDateInput && etatSanteInput && etatFormeInput && environnementInput) {
+    // Récupération des boutons de fermeture/annulation
+    const btnCloseSuccess = document.getElementById("btnCloseSuccess");
+    const btnCancelForm = document.getElementById("btnCancelForm");
+    const btnCancelQR = document.getElementById("btnCancelQR");
+
+    // Récupération du loader du formulaire
+    const formLoader = document.getElementById("formLoader");
+
+
+    if (modalOverlay && stepQR && stepForm && stepSuccess && obsForm && photosInput && photosPreview && clientNameInput && obsDateInput && etatSanteInput && etatFormeInput && environnementInput && btnCloseSuccess && btnCancelForm && btnCancelQR && formLoader) {
         photosInput.addEventListener("change", e => {
             photosPreview.innerHTML = "";
             const files = e.target.files;
@@ -344,6 +363,7 @@ function initializeModalListeners() {
             
             const submitBtn = e.target.querySelector('button[type="submit"]');
             if (submitBtn) submitBtn.disabled = true;
+            if (formLoader) window.show(formLoader, true); // Afficher le loader pour l'envoi du formulaire
             
             try {
                 let finalLat = null;
@@ -360,19 +380,17 @@ function initializeModalListeners() {
                     alert("❌ Erreur de géolocalisation pour la clôture. Veuillez réessayer.");
                     console.error("❌ Erreur de géolocalisation de fin:", geoError);
                     if (submitBtn) submitBtn.disabled = false;
+                    if (formLoader) window.show(formLoader, false); // Masquer le loader en cas d'erreur de géolocalisation
                     return;
                 }
                 
                 const heureFin = new Date().toISOString();
                 
-                // --- DÉBUT MODIFICATION POUR ENVOI JSON AVEC PHOTOS BASE64 ---
                 const photosBase64 = [];
                 const filePromises = Array.from(photosInput.files).map(file => {
                     return new Promise((resolve, reject) => {
                         const reader = new FileReader();
                         reader.onloadend = () => {
-                            // Le résultat est une URL de données (data:image/jpeg;base64,...)
-                            // Nous extrayons la partie Base64 après la virgule.
                             const base64String = reader.result.split(',')[1];
                             photosBase64.push({
                                 data: base64String,
@@ -386,7 +404,7 @@ function initializeModalListeners() {
                     });
                 });
 
-                await Promise.all(filePromises); // Attendre que toutes les photos soient lues en Base64
+                await Promise.all(filePromises);
 
                 const payload = {
                     type: "envoyerFiche",
@@ -406,7 +424,7 @@ function initializeModalListeners() {
                     prestatairePrenom: window.currentPrenom,
                     prestataireNom: window.currentNom,
                     prestataireEmail: window.currentEmail,
-                    photos: photosBase64 // Maintenant, c'est un tableau d'objets {data, name, type}
+                    photos: photosBase64
                 };
                 
                 console.log(`➡️ Lancement de la requête fetch pour envoyer la fiche (JSON).`);
@@ -415,11 +433,10 @@ function initializeModalListeners() {
                 const response = await fetch(window.webAppUrl, {
                     method: "POST",
                     headers: {
-                        'Content-Type': 'application/json' // Indiquer que le corps est du JSON
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(payload), // Envoyer le payload JSON
+                    body: JSON.stringify(payload),
                 });
-                // --- FIN MODIFICATION POUR ENVOI JSON AVEC PHOTOS BASE64 ---
                 
                 const json = await response.json();
                 
@@ -437,19 +454,44 @@ function initializeModalListeners() {
                 console.error("Erreur lors de l'envoi de la fiche:", err);
             } finally {
                 if (submitBtn) submitBtn.disabled = false;
+                if (formLoader) window.show(formLoader, false); // Masquer le loader dans le bloc finally
             }
         });
+
+        // Ajout des écouteurs d'événements pour les boutons de fermeture/annulation
+        btnCloseSuccess.addEventListener("click", closeModal);
+        btnCancelForm.addEventListener("click", closeModal);
+        btnCancelQR.addEventListener("click", closeModal);
+
     }
-} // CORRECTION : L'accolade fermante manquante a été ajoutée ici.
+}
 
 function createAndInjectModalHtml() {
     const modalHtml = `
+        <style>
+            /* Styles pour les loaders */
+            .loader {
+                border: 4px solid #f3f3f3; /* Gris clair */
+                border-top: 4px solid #3498db; /* Bleu */
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                animation: spin 2s linear infinite;
+                margin: 10px auto; /* Centrer le loader */
+            }
+
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
         <div id="modalOverlay" style="display: none;">
             <div id="modalContent">
                 <div id="stepQR" style="display:none;">
                     <h2>📸 Scanner le QR code client</h2>
                     <div id="qr-reader"></div>
                     <p id="geolocationMessage" style="color: #d32f2f; font-weight: bold; text-align: center; margin-top: 15px; display: none;"></p>
+                    <div id="qrScannerLoader" class="loader" style="display:none;"></div> <!-- NOUVEAU LOADER -->
                     <button id="btnCancelQR">Annuler</button>
                 </div>
 
@@ -478,6 +520,7 @@ function createAndInjectModalHtml() {
                         <div id="photosPreview"></div>
                         <button type="submit">Envoyer la fiche</button>
                         <button type="button" id="btnCancelForm">Annuler</button>
+                        <div id="formLoader" class="loader" style="display:none; margin-top: 10px;"></div> <!-- NOUVEAU LOADER -->
                     </form>
                 </div>
 
