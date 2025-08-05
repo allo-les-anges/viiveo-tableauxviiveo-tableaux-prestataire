@@ -303,6 +303,56 @@ function createElementFromHTML(htmlString) {
     return div.firstChild;
 }
 
+/**
+ * Compresses an image file.
+ * @param {File} file The image file to compress.
+ * @param {number} maxWidth The maximum width for the compressed image.
+ * @param {number} maxHeight The maximum height for the compressed image.
+ * @param {number} quality The compression quality (0 to 1).
+ * @returns {Promise<string>} A promise that resolves with the Base64 data URL of the compressed image.
+ */
+async function compressImage(file, maxWidth = 800, maxHeight = 600, quality = 0.7) { // Qualité par défaut à 0.7
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = event => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // Calculate new dimensions while maintaining aspect ratio
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Convert canvas content to data URL (Base64) with specified quality
+                const dataUrl = canvas.toDataURL(file.type, quality);
+                resolve(dataUrl);
+            };
+            img.onerror = error => reject(error);
+        };
+        reader.onerror = error => reject(error);
+    });
+}
+
+
 function initializeModalListeners() {
     const modalOverlay = document.getElementById("modalOverlay");
     const stepQR = document.getElementById("stepQR");
@@ -324,7 +374,7 @@ function initializeModalListeners() {
 
     // Récupération du loader plein écran
     const fullScreenLoader = document.getElementById("fullScreenLoader");
-
+    console.log("initializeModalListeners: fullScreenLoader element found:", !!fullScreenLoader); // Log de vérification
 
     if (modalOverlay && stepQR && stepForm && stepSuccess && obsForm && photosInput && photosPreview && clientNameInput && obsDateInput && etatSanteInput && etatFormeInput && environnementInput && btnCloseSuccess && btnCancelForm && btnCancelQR && fullScreenLoader) {
         photosInput.addEventListener("change", e => {
@@ -391,25 +441,24 @@ function initializeModalListeners() {
                 
                 const heureFin = new Date().toISOString();
                 
+                // MODIFICATION: Compression des images avant conversion en Base64
                 const photosBase64 = [];
-                const filePromises = Array.from(photosInput.files).map(file => {
-                    return new Promise((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                            const base64String = reader.result.split(',')[1];
-                            photosBase64.push({
-                                data: base64String,
-                                name: file.name,
-                                type: file.type
-                            });
-                            resolve();
-                        };
-                        reader.onerror = reject;
-                        reader.readAsDataURL(file);
-                    });
+                const filePromises = Array.from(photosInput.files).map(async file => {
+                    try {
+                        const compressedDataUrl = await compressImage(file, 1024, 768, 0.7); // Compresser à 1024x768, qualité 70%
+                        const base64String = compressedDataUrl.split(',')[1];
+                        photosBase64.push({
+                            data: base64String,
+                            name: file.name,
+                            type: file.type
+                        });
+                    } catch (error) {
+                        console.error(`Erreur lors de la compression ou lecture du fichier ${file.name}:`, error);
+                        // Ne pas rejeter la promesse ici pour que les autres fichiers puissent être traités
+                    }
                 });
 
-                await Promise.all(filePromises);
+                await Promise.all(filePromises); // Attendre que toutes les photos soient lues et compressées
 
                 const payload = {
                     type: "envoyerFiche",
@@ -502,7 +551,7 @@ function createAndInjectModalHtml() {
                 flex-direction: column;
                 justify-content: center;
                 align-items: center;
-                z-index: 1000; /* Assure qu'il est au-dessus des autres éléments */
+                z-index: 1001; /* Assure qu'il est au-dessus des autres éléments, y compris la modale */
                 color: white; /* Couleur du texte */
                 font-size: 1.2em;
                 text-align: center;
@@ -551,7 +600,6 @@ function createAndInjectModalHtml() {
                         <div id="photosPreview"></div>
                         <button type="submit">Envoyer la fiche</button>
                         <button type="button" id="btnCancelForm">Annuler</button>
-                        <!-- Le formLoader a été supprimé ici, remplacé par fullScreenLoader -->
                     </form>
                 </div>
 
@@ -561,7 +609,7 @@ function createAndInjectModalHtml() {
                 </div>
             </div>
         </div>
-        <!-- NOUVEAU LOADER PLEIN ÉCRAN -->
+        <!-- NOUVEAU LOADER PLEIN ÉCRAN POUR L'ENVOI DE LA FICHE -->
         <div id="fullScreenLoader" style="display:none;">
             <div class="loader"></div>
             <p>Cette opération peut prendre quelques secondes...</p>
