@@ -418,7 +418,13 @@ function initializeModalListeners() {
             
             const submitBtn = e.target.querySelector('button[type="submit"]');
             if (submitBtn) submitBtn.disabled = true;
-            if (fullScreenLoader) window.show(fullScreenLoader, true); // Afficher le loader plein écran
+            
+            // Afficher le loader plein écran juste avant l'envoi de la fiche
+            if (fullScreenLoader) {
+                fullScreenLoader.style.display = 'flex';
+                fullScreenLoader.style.opacity = '1';
+                console.log("Loader plein écran affiché.");
+            }
             
             try {
                 let finalLat = null;
@@ -435,7 +441,7 @@ function initializeModalListeners() {
                     alert("❌ Erreur de géolocalisation pour la clôture. Veuillez réessayer.");
                     console.error("❌ Erreur de géolocalisation de fin:", geoError);
                     if (submitBtn) submitBtn.disabled = false;
-                    if (fullScreenLoader) window.show(fullScreenLoader, false); // Masquer le loader en cas d'erreur de géolocalisation
+                    if (fullScreenLoader) fullScreenLoader.style.display = 'none'; // Masquer le loader en cas d'erreur de géolocalisation
                     return;
                 }
                 
@@ -508,7 +514,8 @@ function initializeModalListeners() {
                 console.error("Erreur lors de l'envoi de la fiche:", err);
             } finally {
                 if (submitBtn) submitBtn.disabled = false;
-                if (fullScreenLoader) window.show(fullScreenLoader, false); // Masquer le loader dans le bloc finally
+                if (fullScreenLoader) fullScreenLoader.style.display = 'none'; // Masquer le loader dans le bloc finally
+                console.log("Loader plein écran masqué.");
             }
         });
 
@@ -555,6 +562,10 @@ function createAndInjectModalHtml() {
                 color: white; /* Couleur du texte */
                 font-size: 1.2em;
                 text-align: center;
+                /* Assurez-vous qu'il est initialement caché */
+                display: none; 
+                opacity: 0;
+                transition: opacity 0.3s ease-in-out; /* Ajoute une transition douce */
             }
             #fullScreenLoader .loader {
                 width: 50px; /* Plus grand pour le loader central */
@@ -610,7 +621,7 @@ function createAndInjectModalHtml() {
             </div>
         </div>
         <!-- NOUVEAU LOADER PLEIN ÉCRAN POUR L'ENVOI DE LA FICHE -->
-        <div id="fullScreenLoader" style="display:none;">
+        <div id="fullScreenLoader">
             <div class="loader"></div>
             <p>Cette opération peut prendre quelques secondes...</p>
         </div>
