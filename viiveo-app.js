@@ -10,7 +10,7 @@ let heureDebut = null;
 // Ajoutez cette variable globale pour l'instance du scanner.
 let qrScannerInstance = null;
 
-window.webAppUrl = "http://localhost:3000"; // REMPLACEZ PAR VOTRE URL RÉELLE DU PROXY OU APPS SCRIPT
+window.webAppUrl = "https://gaetano1747.gm-harchies.workers.dev"; // C'est l'URL de votre Cloudflare Worker
 
 function setTodayDate(obsDateInput) {
     if (obsDateInput) {
@@ -804,4 +804,5 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("initializeModalListeners appelée après injection et délai.");
     }, 100);
 });
+
 
