@@ -648,6 +648,8 @@ function createAndInjectModalHtml() {
 
 // CORRECTION : L'ensemble de la fonction handleLogin a été placé entre les accolades.
 window.handleLogin = async function() {
+    console.log("DEBUG: handleLogin a été exécuté.");
+    console.log("LOGIN: Fonction handleLogin() appelée.");
     console.log("LOGIN: Fonction handleLogin() appelée.");
     const email = document.getElementById("email")?.value.trim();
     const password = document.getElementById("password")?.value.trim();
@@ -1058,6 +1060,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("initializeModalListeners appelée après injection et délai.");
     }, 100);
 });
+
 
 
 
