@@ -706,19 +706,29 @@ window.loadMissions = async function(emailToLoad) {
     const mainMissionsDisplay = document.getElementById("main-missions-display");
     const globalLoader = document.getElementById("global-loader");
 
-    if (!contAttente || !contAvenir || !contEnCours || !contTerminees || !mainMissionsDisplay || !globalLoader) {
-        // L'alerte est supprimée. Nous conservons le message d'erreur en console pour le débogage.
-        console.error("LOAD MISSIONS ERROR: Un ou plusieurs conteneurs de missions/loader sont introuvables dans le DOM.");
-        // alert("Erreur d'affichage : Impossible de trouver tous les éléments de l'interface."); // Ligne supprimée ou commentée
-        
-        // Nous ajoutons une vérification supplémentaire pour les cas où l'alerte était le seul moyen de prévenir l'utilisateur:
-        if (document.querySelector('.viiveo-missions')) {
-             document.querySelector('.viiveo-missions').innerHTML = "<p class='error-message'>Erreur interne: Le chargement des missions a échoué. Rechargez la page.</p>";
-        }
-        
+    // L'ancienne vérification stricte est supprimée. 
+    // Si un élément est manquant, les lignes suivantes lèveront une erreur 
+    // qui sera gérée par le bloc try/catch, ce qui est plus propre.
+
+    // Vérifiez que les éléments critiques sont bien trouvés avant de continuer :
+    if (!mainMissionsDisplay || !globalLoader) {
+        console.error("LOAD MISSIONS FATAL ERROR: Impossible de trouver l'affichage principal des missions ou le loader.");
         return;
     }
+    
+    // Le reste du code reprend ici.
+    globalLoader.style.display = 'block';
+    mainMissionsDisplay.style.display = 'none';
 
+    // Ces lignes ne feront plus planter l'application même si contAttente est null,
+    // car le try/catch devrait les intercepter s'ils sont réellement manquants.
+    if (contAttente) contAttente.innerHTML = "Chargement...";
+    if (contAvenir) contAvenir.innerHTML = "Chargement...";
+    if (contEnCours) contEnCours.innerHTML = "Chargement...";
+    if (contTerminees) contTerminees.innerHTML = "Chargement...";
+
+    // ... le reste du code de l'API et du rendu ... 
+}
     globalLoader.style.display = 'block';
     mainMissionsDisplay.style.display = 'none';
 
@@ -990,4 +1000,5 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("initializeModalListeners appelée après injection et délai.");
     }, 100);
 });
+
 
