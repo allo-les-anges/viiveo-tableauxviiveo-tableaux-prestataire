@@ -707,8 +707,15 @@ window.loadMissions = async function(emailToLoad) {
     const globalLoader = document.getElementById("global-loader");
 
     if (!contAttente || !contAvenir || !contEnCours || !contTerminees || !mainMissionsDisplay || !globalLoader) {
+        // L'alerte est supprimée. Nous conservons le message d'erreur en console pour le débogage.
         console.error("LOAD MISSIONS ERROR: Un ou plusieurs conteneurs de missions/loader sont introuvables dans le DOM.");
-        alert("Erreur d'affichage : Impossible de trouver tous les éléments de l'interface.");
+        // alert("Erreur d'affichage : Impossible de trouver tous les éléments de l'interface."); // Ligne supprimée ou commentée
+        
+        // Nous ajoutons une vérification supplémentaire pour les cas où l'alerte était le seul moyen de prévenir l'utilisateur:
+        if (document.querySelector('.viiveo-missions')) {
+             document.querySelector('.viiveo-missions').innerHTML = "<p class='error-message'>Erreur interne: Le chargement des missions a échoué. Rechargez la page.</p>";
+        }
+        
         return;
     }
 
@@ -983,3 +990,4 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("initializeModalListeners appelée après injection et délai.");
     }, 100);
 });
+
