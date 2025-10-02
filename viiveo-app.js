@@ -386,19 +386,17 @@
         };
 
         function initializeLoginForm() {
-            const loginForm = document.getElementById("loginForm");
-            console.log("DEBUG initializeLoginForm: loginForm element:", loginForm);
-            console.log("DEBUG initializeLoginForm: typeof window.handleLogin:", typeof window.handleLogin);
-
-            if (loginForm && typeof window.handleLogin === 'function') {
-                loginForm.removeEventListener("submit", window.handleLogin); 
-                loginForm.addEventListener("submit", window.handleLogin);
-                console.log("Écouteur de soumission ajouté au formulaire de connexion.");
-            } else {
-                console.warn("Formulaire de connexion ou fonction 'handleLogin' non disponible. Nouvelle tentative...");
-                setTimeout(initializeLoginForm, 200);
-            }
-        }
+    const loginForm = document.getElementById("loginForm");
+    
+    if (loginForm && typeof window.handleLogin === 'function') {
+        loginForm.removeEventListener("submit", window.handleLogin); 
+        loginForm.addEventListener("submit", window.handleLogin);
+        console.log("Écouteur de soumission ajouté au formulaire de connexion.");
+    } else {
+        console.warn("Formulaire de connexion ou fonction 'handleLogin' non disponible. Nouvelle tentative...");
+        setTimeout(initializeLoginForm, 200);
+    }
+}
 
         // Point d'entrée principal du script
         document.addEventListener('DOMContentLoaded', () => {
@@ -413,3 +411,4 @@
     </script>
 </body>
 </html>
+
