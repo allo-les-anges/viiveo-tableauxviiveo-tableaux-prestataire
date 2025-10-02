@@ -648,6 +648,7 @@ function createAndInjectModalHtml() {
 
 // CORRECTION : L'ensemble de la fonction handleLogin a été placé entre les accolades.
 window.handleLogin = async function() {
+    if (event) event.preventDefault();
     console.log("DEBUG: handleLogin a été exécuté.");
     console.log("LOGIN: Fonction handleLogin() appelée.");
     console.log("LOGIN: Fonction handleLogin() appelée.");
@@ -1036,21 +1037,36 @@ window.callApiJsonp = function(url, callbackName) {
     });
 };
 
+window.setPrestataireData = function(email, prenom, nom) {
+    window.currentEmail = email; // Définit la variable utilisée par loadMissions
+    window.currentPrenom = prenom;
+    window.currentNom = nom;
+    console.log(`PRESTATAIRE DATA: ${prenom} ${nom} (${email}) a été défini.`);
+};
+
 function initializeLoginForm() {
-    const loginForm = document.getElementById("loginForm");
-    console.log("DEBUG initializeLoginForm: loginForm element:", loginForm);
-    console.log("DEBUG initializeLoginForm: typeof window.handleLogin:", typeof window.handleLogin);
+    // Ciblage du formulaire : par classe en priorité, puis par ID en fallback
+    const loginForm = document.querySelector(".viiveo-login") || document.getElementById("loginForm");
+    
+    console.log("DEBUG initializeLoginForm: Formulaire trouvé:", !!loginForm);
+    console.log("DEBUG initializeLoginForm: handleLogin est une fonction:", typeof window.handleLogin === 'function');
 
     if (loginForm && typeof window.handleLogin === 'function') {
-        loginForm.removeEventListener("submit", window.handleLogin);
+        // Enlève l'écouteur pour éviter les doublons si la fonction est appelée plusieurs fois
+        loginForm.removeEventListener("submit", window.handleLogin); 
+        
+        // Attache l'écouteur. L'objet 'event' sera passé à window.handleLogin,
+        // ce qui lui permet d'appeler event.preventDefault().
         loginForm.addEventListener("submit", window.handleLogin);
+
         console.log("Écouteur de soumission ajouté au formulaire de connexion.");
+        
     } else {
-        console.warn("Formulaire de connexion ou fonction 'handleLogin' non disponible. Nouvelle tentative...");
+        console.warn("Formulaire de connexion (.viiveo-login ou #loginForm) non disponible. Nouvelle tentative...");
+        // Réessayer jusqu'à ce que le formulaire soit chargé
         setTimeout(initializeLoginForm, 200);
     }
 }
-
 // Point d'entrée principal du script
 document.addEventListener('DOMContentLoaded', () => {
     initializeLoginForm();
@@ -1060,6 +1076,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("initializeModalListeners appelée après injection et délai.");
     }, 100);
 });
+
 
 
 
