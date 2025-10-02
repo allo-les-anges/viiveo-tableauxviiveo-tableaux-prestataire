@@ -699,6 +699,7 @@ window.handleLogin = async function() {
 };
 
 window.loadMissions = async function(emailToLoad) {
+    // 1. Déclarations des variables DANS la fonction
     const contAttente = document.getElementById("missions-attente");
     const contAvenir = document.getElementById("missions-a-venir");
     const contEnCours = document.getElementById("missions-en-cours");
@@ -706,16 +707,73 @@ window.loadMissions = async function(emailToLoad) {
     const mainMissionsDisplay = document.getElementById("main-missions-display");
     const globalLoader = document.getElementById("global-loader");
 
-    // L'ancienne vérification stricte est supprimée. 
-    // Si un élément est manquant, les lignes suivantes lèveront une erreur 
-    // qui sera gérée par le bloc try/catch, ce qui est plus propre.
-
-    // Vérifiez que les éléments critiques sont bien trouvés avant de continuer :
+    // 2. Vérification essentielle (celle que nous avons conservée, sans alerte)
     if (!mainMissionsDisplay || !globalLoader) {
         console.error("LOAD MISSIONS FATAL ERROR: Impossible de trouver l'affichage principal des missions ou le loader.");
+        // Si l'élément principal est introuvable, nous ne pouvons rien faire.
         return;
     }
     
+    // 3. Affichage du Loader et masquage du contenu
+    globalLoader.style.display = 'block';
+    mainMissionsDisplay.style.display = 'none';
+
+    // Remplissage des conteneurs s'ils existent (vérification défensive)
+    if (contAttente) contAttente.innerHTML = "Chargement...";
+    if (contAvenir) contAvenir.innerHTML = "Chargement...";
+    if (contEnCours) contEnCours.innerHTML = "Chargement...";
+    if (contTerminees) contTerminees.innerHTML = "Chargement...";
+
+    try {
+        // 4. Début de la logique API
+        const callbackName = 'cbMissions' + Date.now();
+        if (!window.webAppUrl) {
+            throw new Error("URL de l'application manquante pour charger les missions.");
+        }
+
+        const url = `${window.webAppUrl}?type=missionspresta&email=${encodeURIComponent(emailToLoad)}`;
+        console.log("LOAD MISSIONS: URL d'API générée:", url);
+        const data = await window.callApiJsonp(url, callbackName);
+        console.log("LOAD MISSIONS: Réponse de l'API des missions:", data);
+
+        if (!data.success || !Array.isArray(data.missions)) {
+            // Remplace l'alerte par un message en console si c'est une erreur de données/API
+            console.warn("LOAD MISSIONS: Données de missions invalides ou échec. Affichage de l'erreur dans l'interface.", data);
+            throw new Error(data.message || 'Erreur lors du chargement des missions.');
+        }
+
+        // 5. Logique de rendu des missions
+        const missions = data.missions;
+        const missionsAttente = missions.filter(m => m.statut && String(m.statut).toLowerCase() === "en attente");
+        const missionsValidees = missions.filter(m => m.statut && (String(m.statut).toLowerCase() === "confirmée" || String(m.statut).toLowerCase() === "validée"));
+        const missionsEnCours = missions.filter(m => m.statut && String(m.statut).toLowerCase() === "en cours");
+        const missionsTerminees = missions.filter(m => m.statut && (String(m.statut).toLowerCase() === "terminée" || String(m.statut).toLowerCase() === "clôturée"));
+
+        // IMPORTANT : Vérifier que les conteneurs existent avant d'appeler innerHTML (pour la robustesse)
+        if (contAttente) contAttente.innerHTML = renderTable(missionsAttente, 'attente');
+        if (contAvenir) contAvenir.innerHTML = renderTable(missionsValidees, 'validee');
+        if (contEnCours) contEnCours.innerHTML = renderTable(missionsEnCours, 'enCours');
+        if (contTerminees) contTerminees.innerHTML = renderTable(missionsTerminees, 'terminee');
+
+        // Note: Assurez-vous que renderTable ne renvoie pas une erreur si conteneur est null.
+        attachMissionButtonListeners();
+
+        // 6. Masquage du Loader et affichage du contenu
+        globalLoader.style.display = 'none';
+        mainMissionsDisplay.style.display = 'block';
+
+        console.log("LOAD MISSIONS: Tableaux de missions rendus et écouteurs attachés avec succès.");
+
+    } catch (e) {
+        // 7. Gestion des erreurs (y compris l'erreur throw dans le if (!data.success))
+        console.error("LOAD MISSIONS ERROR: Erreur dans loadMissions():", e);
+        
+        // Masquage du loader et affichage de l'erreur dans l'interface utilisateur
+        globalLoader.style.display = 'none';
+        mainMissionsDisplay.innerHTML = `<p class='error-message'>Erreur lors du chargement des missions: ${e.message}</p>`;
+        mainMissionsDisplay.style.display = 'block';
+    }
+};    
     // Le reste du code reprend ici.
     globalLoader.style.display = 'block';
     mainMissionsDisplay.style.display = 'none';
@@ -1000,5 +1058,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("initializeModalListeners appelée après injection et délai.");
     }, 100);
 });
+
 
 
