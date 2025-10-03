@@ -698,21 +698,35 @@ window.handleLogin = async function() {
     }
 };
 
-window.loadMissions = async function(emailToLoad) {
+// viiveo-app.js
+window.loadMissions = async function(emailToLoad, filterType = 'en_attente') { // Ajout de filterType si vous en avez besoin pour le filtre initial
+
+    // Les conteneurs de missions restent nécessaires
     const contAttente = document.getElementById("missions-attente");
     const contAvenir = document.getElementById("missions-a-venir");
     const contEnCours = document.getElementById("missions-en-cours");
     const contTerminees = document.getElementById("missions-terminees");
     const mainMissionsDisplay = document.getElementById("main-missions-display");
-    const globalLoader = document.getElementById("global-loader");
 
-    if (!contAttente || !contAvenir || !contEnCours || !contTerminees || !mainMissionsDisplay || !globalLoader) {
+    // L'élément globalLoader n'est plus pertinent. On le retire des vérifications.
+    // L'élément 'loader' est le cercle, et 'loader-wrapper' est sa surcouche.
+    // On travaille uniquement avec 'loader' et la fonction window.show gère le wrapper.
+    const loaderElement = document.getElementById('loader');
+
+    if (!contAttente || !contAvenir || !contEnCours || !contTerminees || !mainMissionsDisplay || !loaderElement) {
         console.error("LOAD MISSIONS ERROR: Un ou plusieurs conteneurs de missions/loader sont introuvables dans le DOM.");
-        alert("Erreur d'affichage : Impossible de trouver tous les éléments de l'interface.");
+        // Le HTML gère déjà le masquage/affichage au clic, cette alerte n'est pas nécessaire ici si le loader est visible
+        // alert("Erreur d'affichage : Impossible de trouver tous les éléments de l'interface.");
+        
+        // Tentative de masquage du loader même en cas d'erreur de conteneur
+        if (typeof window.show === 'function') {
+             window.show(loaderElement, false);
+        }
         return;
     }
 
-    globalLoader.style.display = 'block';
+    // Affiche le loader centré via la fonction du HTML
+    window.show(loaderElement, true); 
     mainMissionsDisplay.style.display = 'none';
 
     contAttente.innerHTML = "Chargement...";
@@ -725,7 +739,10 @@ window.loadMissions = async function(emailToLoad) {
         if (!window.webAppUrl) {
             console.error("LOAD MISSIONS ERROR: window.webAppUrl n'est pas défini !");
             alert("Erreur de configuration: URL de l'application manquante pour charger les missions.");
-            globalLoader.style.display = 'none';
+            
+            // Masque le loader centré
+            window.show(loaderElement, false); 
+            
             mainMissionsDisplay.innerHTML = "<p class='error-message'>Erreur de configuration: URL de l'application manquante.</p>";
             mainMissionsDisplay.style.display = 'block';
             return;
@@ -739,7 +756,10 @@ window.loadMissions = async function(emailToLoad) {
         if (!data.success || !Array.isArray(data.missions)) {
             alert("Erreur lors du chargement des missions.");
             console.warn("LOAD MISSIONS: Données de missions invalides ou échec.", data);
-            globalLoader.style.display = 'none';
+            
+            // Masque le loader centré
+            window.show(loaderElement, false); 
+            
             mainMissionsDisplay.innerHTML = `<p class='error-message'>${data.message || 'Erreur lors du chargement des missions.'}</p>`;
             mainMissionsDisplay.style.display = 'block';
             return;
@@ -758,15 +778,26 @@ window.loadMissions = async function(emailToLoad) {
 
         attachMissionButtonListeners();
 
-        globalLoader.style.display = 'none';
+        // MASQUE LE LOADER CENTRÉ
+        window.show(loaderElement, false); 
         mainMissionsDisplay.style.display = 'block';
+        
+        // OPTIONNEL : Afficher le conteneur spécifique au filterType (si vous l'utilisez)
+        // const targetContainerId = filterType === 'planifiees' ? 'missions-planifiees-container' : 
+        //                           filterType === 'en_cours' ? 'missions-en-cours-container' : 
+        //                           filterType === 'terminees' ? 'missions-terminees-container' : 'missions-attente-container';
+        // document.getElementById(targetContainerId).style.display = 'block';
+
 
         console.log("LOAD MISSIONS: Tableaux de missions rendus et écouteurs attachés avec succès.");
 
     } catch (e) {
         alert("Erreur serveur lors du chargement des missions.");
         console.error("LOAD MISSIONS ERROR: Erreur dans loadMissions():", e);
-        globalLoader.style.display = 'none';
+        
+        // Masque le loader centré en cas d'échec
+        window.show(loaderElement, false); 
+        
         mainMissionsDisplay.innerHTML = `<p class='error-message'>Erreur lors du chargement des missions: ${e.message}</p>`;
         mainMissionsDisplay.style.display = 'block';
     }
@@ -983,3 +1014,4 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("initializeModalListeners appelée après injection et délai.");
     }, 100);
 });
+
