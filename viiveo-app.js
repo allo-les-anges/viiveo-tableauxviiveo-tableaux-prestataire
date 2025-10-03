@@ -495,9 +495,12 @@ function initializeModalListeners() {
                 console.log(`➡️ Lancement de la requête fetch pour envoyer la fiche (JSON).`);
                 console.log(`Payload JSON (sans les données Base64 complètes pour la console):`, { ...payload, photos: payload.photos.map(p => ({ name: p.name, type: p.type, dataLength: p.data.length })) });
 
-                const json = await sendFicheJsonpRequest(payload, window.webAppUrl);
+                const json = await sendFormDataRequest(payload, window.webAppUrl);
 
-// La suite du code de gestion de la réponse reste la même (lignes 515 et suivantes) :
+// Si nous arrivons ici, la requête a réussi (response.ok est TRUE)
+// L'objet 'json' contient la réponse parsée du serveur.
+// Nous continuons ensuite avec la gestion du succès/échec logique :
+    
 if (json.success) {
                     
                     stepForm.style.display = "none";
@@ -1062,6 +1065,46 @@ function sendFicheJsonpRequest(payload, url) {
         };
         document.head.appendChild(script);
     });
+}
+/**
+ * Envoie une requête POST Apps Script en utilisant FormData pour contourner CORS.
+ * C'est la méthode recommandée par Google pour les requêtes POST depuis des domaines externes.
+ * @param {object} payload - Les données de la fiche à envoyer.
+ * @param {string} url - L'URL de l'application Apps Script.
+ * @returns {Promise<object>} La réponse JSON du serveur.
+ */
+async function sendFormDataRequest(payload, url) {
+    const formData = new FormData();
+    
+    // Convertir l'objet payload en FormData
+    for (const key in payload) {
+        if (payload.hasOwnProperty(key)) {
+            // Gérer les photos séparément car elles sont un tableau d'objets
+            if (key === 'photos' && Array.isArray(payload[key])) {
+                // Stocker le tableau de photos en tant que chaîne JSON
+                formData.append(key, JSON.stringify(payload[key]));
+            } else {
+                // Pour toutes les autres données (simples), les ajouter directement
+                formData.append(key, payload[key]);
+            }
+        }
+    }
+    
+    // L'utilisation de FormData rend l'en-tête 'Content-Type' inutile (le navigateur le gère)
+    // et contourne le blocage CORS pour Apps Script.
+    const response = await fetch(url, {
+        method: "POST",
+        body: formData, // <--- C'EST LA CLÉ !
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ Échec de la requête HTTP FormData: Statut ${response.status}`, errorText);
+        throw new Error(`Échec de la connexion au serveur (Statut HTTP ${response.status}).`);
+    }
+
+    // Le corps de la réponse Apps Script est toujours JSON
+    return response.json();
 }
 
 
