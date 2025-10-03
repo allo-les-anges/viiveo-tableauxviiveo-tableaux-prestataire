@@ -699,7 +699,7 @@ window.handleLogin = async function() {
 };
 
 // viiveo-app.js
-window.loadMissions = async function(emailToLoad, filterType = 'en_attente') { // Ajout de filterType si vous en avez besoin pour le filtre initial
+window.loadMissions = async function(emailToLoad, filterType = 'en_attente') {
 
     // Les conteneurs de missions restent nécessaires
     const contAttente = document.getElementById("missions-attente");
@@ -708,24 +708,27 @@ window.loadMissions = async function(emailToLoad, filterType = 'en_attente') { /
     const contTerminees = document.getElementById("missions-terminees");
     const mainMissionsDisplay = document.getElementById("main-missions-display");
 
-    // L'élément globalLoader n'est plus pertinent. On le retire des vérifications.
     // L'élément 'loader' est le cercle, et 'loader-wrapper' est sa surcouche.
-    // On travaille uniquement avec 'loader' et la fonction window.show gère le wrapper.
     const loaderElement = document.getElementById('loader');
 
-    if (!contAttente || !contAvenir || !contEnCours || !contTerminees || !mainMissionsDisplay || !loaderElement) {
+    // Récupérer les conteneurs PARENTS pour pouvoir les manipuler
+    const containerAttente = document.getElementById("missions-attente-container");
+    const containerPlanif = document.getElementById("missions-planifiees-container");
+    const containerEnCours = document.getElementById("missions-en-cours-container");
+    const containerTerminees = document.getElementById("missions-terminees-container");
+
+
+    if (!contAttente || !contAvenir || !contEnCours || !contTerminees || !mainMissionsDisplay || !loaderElement || !containerAttente || !containerPlanif || !containerEnCours || !containerTerminees) {
         console.error("LOAD MISSIONS ERROR: Un ou plusieurs conteneurs de missions/loader sont introuvables dans le DOM.");
-        // Le HTML gère déjà le masquage/affichage au clic, cette alerte n'est pas nécessaire ici si le loader est visible
-        // alert("Erreur d'affichage : Impossible de trouver tous les éléments de l'interface.");
-        
-        // Tentative de masquage du loader même en cas d'erreur de conteneur
-        if (typeof window.show === 'function') {
-             window.show(loaderElement, false);
-        }
+        if (typeof window.show === 'function') {
+            window.show(loaderElement, false);
+        }
         return;
     }
 
-    // Affiche le loader centré via la fonction du HTML
+    // **********************************************
+    // 1. AFFICHAGE DU LOADER
+    // **********************************************
     window.show(loaderElement, true); 
     mainMissionsDisplay.style.display = 'none';
 
@@ -739,10 +742,7 @@ window.loadMissions = async function(emailToLoad, filterType = 'en_attente') { /
         if (!window.webAppUrl) {
             console.error("LOAD MISSIONS ERROR: window.webAppUrl n'est pas défini !");
             alert("Erreur de configuration: URL de l'application manquante pour charger les missions.");
-            
-            // Masque le loader centré
             window.show(loaderElement, false); 
-            
             mainMissionsDisplay.innerHTML = "<p class='error-message'>Erreur de configuration: URL de l'application manquante.</p>";
             mainMissionsDisplay.style.display = 'block';
             return;
@@ -750,16 +750,14 @@ window.loadMissions = async function(emailToLoad, filterType = 'en_attente') { /
 
         const url = `${window.webAppUrl}?type=missionspresta&email=${encodeURIComponent(emailToLoad)}`;
         console.log("LOAD MISSIONS: URL d'API générée:", url);
-        const data = await window.callApiJsonp(url, callbackName);
+        // Utilisation de la méthode générique pour éviter d'importer le code de callApiJsonp ici
+        const data = await window.callApiJsonp(url, callbackName); 
         console.log("LOAD MISSIONS: Réponse de l'API des missions:", data);
 
         if (!data.success || !Array.isArray(data.missions)) {
             alert("Erreur lors du chargement des missions.");
             console.warn("LOAD MISSIONS: Données de missions invalides ou échec.", data);
-            
-            // Masque le loader centré
             window.show(loaderElement, false); 
-            
             mainMissionsDisplay.innerHTML = `<p class='error-message'>${data.message || 'Erreur lors du chargement des missions.'}</p>`;
             mainMissionsDisplay.style.display = 'block';
             return;
@@ -771,22 +769,42 @@ window.loadMissions = async function(emailToLoad, filterType = 'en_attente') { /
         const missionsEnCours = missions.filter(m => m.statut && String(m.statut).toLowerCase() === "en cours");
         const missionsTerminees = missions.filter(m => m.statut && (String(m.statut).toLowerCase() === "terminée" || String(m.statut).toLowerCase() === "clôturée"));
 
+        // Rendu des tableaux dans les DIVs internes
         contAttente.innerHTML = renderTable(missionsAttente, 'attente');
         contAvenir.innerHTML = renderTable(missionsValidees, 'validee');
         contEnCours.innerHTML = renderTable(missionsEnCours, 'enCours');
         contTerminees.innerHTML = renderTable(missionsTerminees, 'terminee');
 
+        // Ajout des écouteurs
         attachMissionButtonListeners();
 
-        // MASQUE LE LOADER CENTRÉ
+        // **********************************************
+        // 2. MASQUAGE DU LOADER ET AFFICHAGE DU CONTENU
+        // **********************************************
         window.show(loaderElement, false); 
         mainMissionsDisplay.style.display = 'block';
         
-        // OPTIONNEL : Afficher le conteneur spécifique au filterType (si vous l'utilisez)
-        // const targetContainerId = filterType === 'planifiees' ? 'missions-planifiees-container' : 
-        //                           filterType === 'en_cours' ? 'missions-en-cours-container' : 
-        //                           filterType === 'terminees' ? 'missions-terminees-container' : 'missions-attente-container';
-        // document.getElementById(targetContainerId).style.display = 'block';
+        // Gérer l'affichage du conteneur spécifique (missions en attente par défaut)
+        
+        // Masque tout d'abord tous les conteneurs (pour être sûr)
+        containerAttente.style.display = 'none';
+        containerPlanif.style.display = 'none';
+        containerEnCours.style.display = 'none';
+        containerTerminees.style.display = 'none';
+        
+        // Affiche le conteneur basé sur le filtre demandé (ou "en attente" par défaut)
+        if (filterType === 'en_attente') {
+            containerAttente.style.display = 'block';
+        } else if (filterType === 'planifiees') {
+            containerPlanif.style.display = 'block';
+        } else if (filterType === 'en_cours') {
+            containerEnCours.style.display = 'block';
+        } else if (filterType === 'terminees') {
+            containerTerminees.style.display = 'block';
+        } else {
+            // Afficher le défaut si l'argument est manquant (ex: après login)
+            containerAttente.style.display = 'block';
+        }
 
 
         console.log("LOAD MISSIONS: Tableaux de missions rendus et écouteurs attachés avec succès.");
@@ -794,15 +812,11 @@ window.loadMissions = async function(emailToLoad, filterType = 'en_attente') { /
     } catch (e) {
         alert("Erreur serveur lors du chargement des missions.");
         console.error("LOAD MISSIONS ERROR: Erreur dans loadMissions():", e);
-        
-        // Masque le loader centré en cas d'échec
         window.show(loaderElement, false); 
-        
         mainMissionsDisplay.innerHTML = `<p class='error-message'>Erreur lors du chargement des missions: ${e.message}</p>`;
         mainMissionsDisplay.style.display = 'block';
     }
 };
-
 function renderTable(missions, type = "") {
     if (!missions.length) return "<p>Aucune mission.</p>";
     let html = `<table class="missions-table"><thead><tr><th>ID</th><th>Client</th><th>Adresse</th><th>Service</th><th>Date</th><th>Heure</th>`;
@@ -1014,4 +1028,5 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("initializeModalListeners appelée après injection et délai.");
     }, 100);
 });
+
 
