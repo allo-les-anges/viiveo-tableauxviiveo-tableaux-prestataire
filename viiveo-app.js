@@ -502,6 +502,13 @@ function initializeModalListeners() {
                     },
                     body: JSON.stringify(payload),
                 });
+
+                if (!response.ok) {
+                    const errorText = await response.text(); // Tente de lire le corps de l'erreur
+                    console.error(`❌ Échec de la requête HTTP: Statut ${response.status}`, errorText);
+                    // Lance une erreur explicite
+                    throw new Error(`Échec de la connexion au serveur (Statut HTTP ${response.status}). Vérifiez le script Apps.`);
+                }
                 
                 const json = await response.json();
                 
@@ -1031,6 +1038,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("initializeModalListeners appelée après injection et délai.");
     }, 100);
 });
+
 
 
 
