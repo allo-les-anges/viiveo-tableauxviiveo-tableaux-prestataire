@@ -495,24 +495,11 @@ function initializeModalListeners() {
                 console.log(`➡️ Lancement de la requête fetch pour envoyer la fiche (JSON).`);
                 console.log(`Payload JSON (sans les données Base64 complètes pour la console):`, { ...payload, photos: payload.photos.map(p => ({ name: p.name, type: p.type, dataLength: p.data.length })) });
 
-                const response = await fetch(window.webAppUrl, {
-                    method: "POST",
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload),
-                });
+                const json = await sendFicheJsonpRequest(payload, window.webAppUrl);
 
-                if (!response.ok) {
-                    const errorText = await response.text(); // Tente de lire le corps de l'erreur
-                    console.error(`❌ Échec de la requête HTTP: Statut ${response.status}`, errorText);
-                    // Lance une erreur explicite
-                    throw new Error(`Échec de la connexion au serveur (Statut HTTP ${response.status}). Vérifiez le script Apps.`);
-                }
-                
-                const json = await response.json();
-                
-                if (json.success) {
+// La suite du code de gestion de la réponse reste la même (lignes 515 et suivantes) :
+if (json.success) {
+                    
                     stepForm.style.display = "none";
                     stepSuccess.style.display = "flex";
                     if (typeof window.loadMissions === 'function' && window.currentEmail) {
@@ -1038,6 +1025,44 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("initializeModalListeners appelée après injection et délai.");
     }, 100);
 });
+/**
+ * Utilise la méthode JSONP/GET pour envoyer la fiche de clôture, 
+ * ce qui contourne le problème CORS.
+ * @param {object} payload - Les données de la fiche, y compris les photos Base64.
+ * @param {string} url - L'URL de l'application Apps Script (window.webAppUrl).
+ * @returns {Promise<object>} La réponse JSON de l'API.
+ */
+function sendFicheJsonpRequest(payload, url) {
+    return new Promise((resolve, reject) => {
+        const callbackName = 'cbFiche' + new Date().getTime() + Math.floor(Math.random() * 1000);
+        
+        // Convertir la charge utile complète en paramètre d'URL encodé.
+        // C'est potentiellement très long, mais nécessaire pour éviter CORS.
+        const encodedPayload = encodeURIComponent(JSON.stringify(payload));
+
+        // Note: Nous utilisons l'URL de base 'exec' mais encodons le corps en paramètre
+        const finalUrl = `${url}?type=envoyerfiche&payload=${encodedPayload}&callback=${callbackName}`;
+
+        console.log(`➡️ JSONP Fiche: Requête lancée pour ${finalUrl}`);
+        
+        window[callbackName] = (data) => {
+            console.log(`✅ JSONP Fiche Callback ${callbackName} reçu:`, data);
+            resolve(data);
+            delete window[callbackName];
+            script.remove();
+        };
+
+        const script = document.createElement('script');
+        script.src = finalUrl;
+        script.onerror = (e) => {
+            console.error("❌ Erreur de chargement du script JSONP pour la fiche:", e);
+            delete window[callbackName];
+            script.remove();
+            reject(new Error("Erreur réseau JSONP ou chargement du script Apps Script échoué."));
+        };
+        document.head.appendChild(script);
+    });
+}
 
 
 
