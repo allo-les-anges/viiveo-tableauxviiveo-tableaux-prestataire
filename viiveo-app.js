@@ -701,31 +701,34 @@ window.handleLogin = async function() {
 // viiveo-app.js
 window.loadMissions = async function(emailToLoad, filterType = 'en_attente') {
 
-    // Les conteneurs de missions restent nécessaires
+    // Les DIVs INTERNES où les tableaux sont injectés (missions-attente, missions-a-venir, etc.)
     const contAttente = document.getElementById("missions-attente");
     const contAvenir = document.getElementById("missions-a-venir");
     const contEnCours = document.getElementById("missions-en-cours");
     const contTerminees = document.getElementById("missions-terminees");
     const mainMissionsDisplay = document.getElementById("main-missions-display");
 
-    // L'élément 'loader' est le cercle, et 'loader-wrapper' est sa surcouche.
-    const loaderElement = document.getElementById('loader');
+    // L'élément 'loader' est le cercle, dont window.show manipule le wrapper.
+    const loaderElement = document.getElementById('loader'); 
 
-    // Récupérer les conteneurs PARENTS pour pouvoir les manipuler
+    // Récupérer les conteneurs PARENTS pour pouvoir les manipuler (missions-attente-container, etc.)
     const containerAttente = document.getElementById("missions-attente-container");
     const containerPlanif = document.getElementById("missions-planifiees-container");
     const containerEnCours = document.getElementById("missions-en-cours-container");
     const containerTerminees = document.getElementById("missions-terminees-container");
-
-
+    
+    // Ancien code : if (!contAttente || ... || !globalLoader)
+    // NOUVEAU CODE DE VÉRIFICATION :
     if (!contAttente || !contAvenir || !contEnCours || !contTerminees || !mainMissionsDisplay || !loaderElement || !containerAttente || !containerPlanif || !containerEnCours || !containerTerminees) {
         console.error("LOAD MISSIONS ERROR: Un ou plusieurs conteneurs de missions/loader sont introuvables dans le DOM.");
-        if (typeof window.show === 'function') {
-            window.show(loaderElement, false);
-        }
+        alert("Erreur d'affichage : Impossible de trouver tous les éléments de l'interface.");
+        
+        // Tentative de masquage du loader (s'il est visible)
+        if (typeof window.show === 'function' && loaderElement) {
+            window.show(loaderElement, false);
+        }
         return;
     }
-
     // **********************************************
     // 1. AFFICHAGE DU LOADER
     // **********************************************
@@ -1028,5 +1031,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("initializeModalListeners appelée après injection et délai.");
     }, 100);
 });
+
 
 
