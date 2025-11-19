@@ -1,42 +1,65 @@
 // viiveo-app.js 050825 10:30 (Mise à jour pour envoi de photos en Base64)
 // CORRECTION : Vérification de la page pour empêcher le scanner automatique
 // NETTOYAGE AUTOMATIQUE - Supprimer toute modale existante sur la page de connexion
+// =============================================
+// VÉRIFICATION INITIALE - NE PAS EXÉCUTER SUR LES PAGES NON-PRESTATAIRES
+// =============================================
 (function() {
-    console.log('🔍 Nettoyage automatique des modales...');
+    // Vérifier STRICTEMENT si nous sommes sur une page prestataire
+    const currentPath = window.location.pathname.toLowerCase();
     
-    // Vérifier si on est sur la page de connexion
-    const isLoginPage = document.getElementById('loginForm') && 
-                       !window.currentEmail && 
-                       !window.currentPrenom && 
-                       !window.currentNom;
+    // Pages autorisées (uniquement les pages prestataires et login)
+    const allowedPages = [
+        'iprestataires',
+        'prestataire', 
+        'loginpresta'
+    ];
     
-    if (isLoginPage) {
-        console.log('🚫 Page de connexion détectée - Nettoyage des modales');
+    // Vérifier aussi par éléments DOM spécifiques aux pages prestataires
+    const hasPrestataireElements = document.querySelector('.viiveo-prestataire-interface') || 
+                                  document.getElementById('loginForm') ||
+                                  document.querySelector('.viiveo-missions') ||
+                                  document.querySelector('.viiveo-login');
+    
+    const isPrestatairePage = allowedPages.some(page => currentPath.includes(page)) || 
+                             hasPrestataireElements;
+    
+    console.log('🔍 Vérification page:', {
+        path: currentPath,
+        hasPrestataireElements: !!hasPrestataireElements,
+        isPrestatairePage: isPrestatairePage
+    });
+    
+    // Si ce n'est pas une page prestataire, arrêter l'exécution du script
+    if (!isPrestatairePage) {
+        console.log('🚫 viiveo-app.js: Page non prestataire détectée, script désactivé');
         
-        // Supprimer toutes les modales potentielles
-        const elementsToRemove = [
-            'modalOverlay', 'modalContent', 'stepQR', 'stepForm', 'stepSuccess',
-            'qr-reader', 'fullScreenLoader', 'qrScannerLoader'
-        ];
+        // Désactiver COMPLÈTEMENT les fonctions principales
+        window.openModalStartPrestation = function() {
+            console.log('🚫 Scanner désactivé sur cette page');
+            return false;
+        };
+        window.openModalCloturerPrestation = function() {
+            console.log('🚫 Scanner désactivé sur cette page');
+            return false;
+        };
+        window.startQrScanner = function() {
+            console.log('🚫 Scanner QR désactivé sur cette page');
+            return Promise.reject(new Error('Scanner désactivé sur cette page'));
+        };
         
-        elementsToRemove.forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.remove();
-                console.log('🗑️ Élément supprimé:', id);
-            }
-        });
+        // NE PAS injecter la modale du tout
+        window.createAndInjectModalHtml = function() {
+            console.log('🚫 Injection modale bloquée - page non prestataire');
+        };
         
-        // Supprimer aussi par classe ou contenu texte
-        const allElements = document.querySelectorAll('*');
-        allElements.forEach(el => {
-            if (el.textContent && el.textContent.includes('Scanner le QR code client')) {
-                console.log('🗑️ Élément avec texte scanner supprimé:', el);
-                el.remove();
-            }
-        });
+        // Arrêter l'exécution du script immédiatement
+        return;
     }
+    
+    console.log('✅ viiveo-app.js: Page prestataire détectée, script activé');
 })();
+
 // =============================================
 // VÉRIFICATION INITIALE - NE PAS EXÉCUTER SUR LES PAGES NON-PRESTATAIRES
 // =============================================
@@ -1270,6 +1293,7 @@ async function sendFormDataRequest(payload, url) {
     // Le corps de la réponse Apps Script est toujours JSON
     return response.json();
 }
+
 
 
 
