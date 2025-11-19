@@ -1,5 +1,41 @@
-
 // viiveo-app.js 050825 10:30 (Mise à jour pour envoi de photos en Base64)
+// CORRECTION : Vérification de la page pour empêcher le scanner automatique
+
+// =============================================
+// VÉRIFICATION INITIALE - NE PAS EXÉCUTER SUR LES PAGES NON-PRESTATAIRES
+// =============================================
+(function() {
+    // Vérifier si nous sommes sur une page prestataire
+    const isPrestatairePage = window.location.pathname.includes('iprestataires') || 
+                             window.location.pathname.includes('prestataire') ||
+                             document.querySelector('.viiveo-prestataire-interface') ||
+                             document.getElementById('loginForm');
+    
+    // Si ce n'est pas une page prestataire, arrêter l'exécution du script
+    if (!isPrestatairePage) {
+        console.log('🚫 viiveo-app.js: Page non prestataire détectée, script désactivé');
+        
+        // Désactiver les fonctions principales pour éviter tout comportement indésirable
+        window.openModalStartPrestation = function() {
+            console.log('🚫 Scanner désactivé sur cette page');
+        };
+        window.openModalCloturerPrestation = function() {
+            console.log('🚫 Scanner désactivé sur cette page');
+        };
+        window.startQrScanner = function() {
+            console.log('🚫 Scanner QR désactivé sur cette page');
+            return Promise.reject(new Error('Scanner désactivé'));
+        };
+        
+        return; // Arrête l'exécution du script
+    }
+    
+    console.log('✅ viiveo-app.js: Page prestataire détectée, script activé');
+})();
+
+// =============================================
+// CODE EXISTANT (s'exécute seulement sur les pages prestataires)
+// =============================================
 
 // Variables globales pour l'état de la mission et du prestataire
 let currentMissionId = null;
@@ -1106,7 +1142,3 @@ async function sendFormDataRequest(payload, url) {
     // Le corps de la réponse Apps Script est toujours JSON
     return response.json();
 }
-
-
-
-
