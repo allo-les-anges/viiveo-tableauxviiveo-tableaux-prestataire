@@ -722,6 +722,31 @@ function createAndInjectModalHtml() {
             button[type="button"]:hover {
                 background: #7f8c8d;
             }
+
+            /* SOLUTION URGENTE - Cacher la modale scanner sur la page de connexion */
+#modalOverlay,
+#modalContent,
+[class*="modal"],
+[class*="scanner"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    position: fixed !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    z-index: -9999 !important;
+}
+
+/* Cacher spécifiquement le texte du scanner dans le footer */
+body:not(.logged-in)::after,
+body:not(.logged-in)::before {
+    content: none !important;
+}
+
+/* Cacher tout élément contenant le texte du scanner */
+*:contains("Scanner le QR code client") {
+    display: none !important;
+}       
         </style>
         <div id="modalOverlay" style="display: none;">
             <div id="modalContent">
@@ -1246,4 +1271,5 @@ async function sendFormDataRequest(payload, url) {
     // Le corps de la réponse Apps Script est toujours JSON
     return response.json();
 }
+
 
