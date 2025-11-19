@@ -1,6 +1,42 @@
 // viiveo-app.js 050825 10:30 (Mise à jour pour envoi de photos en Base64)
 // CORRECTION : Vérification de la page pour empêcher le scanner automatique
-
+// NETTOYAGE AUTOMATIQUE - Supprimer toute modale existante sur la page de connexion
+(function() {
+    console.log('🔍 Nettoyage automatique des modales...');
+    
+    // Vérifier si on est sur la page de connexion
+    const isLoginPage = document.getElementById('loginForm') && 
+                       !window.currentEmail && 
+                       !window.currentPrenom && 
+                       !window.currentNom;
+    
+    if (isLoginPage) {
+        console.log('🚫 Page de connexion détectée - Nettoyage des modales');
+        
+        // Supprimer toutes les modales potentielles
+        const elementsToRemove = [
+            'modalOverlay', 'modalContent', 'stepQR', 'stepForm', 'stepSuccess',
+            'qr-reader', 'fullScreenLoader', 'qrScannerLoader'
+        ];
+        
+        elementsToRemove.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.remove();
+                console.log('🗑️ Élément supprimé:', id);
+            }
+        });
+        
+        // Supprimer aussi par classe ou contenu texte
+        const allElements = document.querySelectorAll('*');
+        allElements.forEach(el => {
+            if (el.textContent && el.textContent.includes('Scanner le QR code client')) {
+                console.log('🗑️ Élément avec texte scanner supprimé:', el);
+                el.remove();
+            }
+        });
+    }
+})();
 // =============================================
 // VÉRIFICATION INITIALE - NE PAS EXÉCUTER SUR LES PAGES NON-PRESTATAIRES
 // =============================================
@@ -1234,6 +1270,7 @@ async function sendFormDataRequest(payload, url) {
     // Le corps de la réponse Apps Script est toujours JSON
     return response.json();
 }
+
 
 
 
