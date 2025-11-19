@@ -569,6 +569,16 @@ if (json.success) {
 }
 
 function createAndInjectModalHtml() {
+    // Vérifier si l'utilisateur est déjà connecté avant d'injecter la modale
+    const isLoggedIn = window.currentEmail && window.currentPrenom && window.currentNom;
+    const isLoginPage = document.getElementById('loginForm') && !isLoggedIn;
+    
+    // Ne pas injecter la modale sur la page de connexion si l'utilisateur n'est pas connecté
+    if (isLoginPage) {
+        console.log('🚫 Modale scanner non injectée: page de connexion détectée');
+        return;
+    }
+
     const modalHtml = `
         <style>
             /* Styles pour les loaders */
@@ -622,6 +632,96 @@ function createAndInjectModalHtml() {
             #fullScreenLoader p {
                 margin-top: 15px;
             }
+
+            /* Styles spécifiques pour la modale scanner */
+            #modalOverlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                display: none;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+            }
+
+            #modalContent {
+                background: white;
+                padding: 2rem;
+                border-radius: 1rem;
+                max-width: 90%;
+                max-height: 90%;
+                overflow-y: auto;
+                text-align: center;
+            }
+
+            #qr-reader {
+                width: 100%;
+                max-width: 400px;
+                margin: 1rem auto;
+            }
+
+            #stepQR, #stepForm, #stepSuccess {
+                display: none;
+            }
+
+            #stepQR h2, #stepForm h2, #stepSuccess h2 {
+                margin-bottom: 1rem;
+                color: #333;
+            }
+
+            #obsForm label {
+                display: block;
+                margin: 0.5rem 0 0.2rem;
+                font-weight: bold;
+                text-align: left;
+            }
+
+            #obsForm input, #obsForm select, #obsForm textarea {
+                width: 100%;
+                padding: 0.5rem;
+                margin-bottom: 1rem;
+                border: 1px solid #ddd;
+                border-radius: 0.25rem;
+            }
+
+            #photosPreview {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                margin: 1rem 0;
+            }
+
+            #photosPreview img {
+                width: 100px;
+                height: 100px;
+                object-fit: cover;
+                border-radius: 0.25rem;
+            }
+
+            button {
+                background: #3498db;
+                color: white;
+                border: none;
+                padding: 0.75rem 1.5rem;
+                border-radius: 0.25rem;
+                cursor: pointer;
+                margin: 0.25rem;
+            }
+
+            button:hover {
+                background: #2980b9;
+            }
+
+            button[type="button"] {
+                background: #95a5a6;
+            }
+
+            button[type="button"]:hover {
+                background: #7f8c8d;
+            }
         </style>
         <div id="modalOverlay" style="display: none;">
             <div id="modalContent">
@@ -668,17 +768,21 @@ function createAndInjectModalHtml() {
             </div>
         </div>
     `;
+    
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    // Injection du fullScreenLoader directement dans le body
-    document.body.insertAdjacentHTML('beforeend', `
-        <div id="fullScreenLoader">
-            <div class="loader"></div>
-            <p>Cette opération peut prendre quelques secondes...</p>
-        </div>
-    `);
+    
+    // Injection du fullScreenLoader seulement si nécessaire
+    if (!document.getElementById('fullScreenLoader')) {
+        document.body.insertAdjacentHTML('beforeend', `
+            <div id="fullScreenLoader" style="display: none; opacity: 0;">
+                <div class="loader"></div>
+                <p>Cette opération peut prendre quelques secondes...</p>
+            </div>
+        `);
+    }
+    
     console.log("Modal HTML injected dynamically via JS.");
 }
-
 // CORRECTION : L'ensemble de la fonction handleLogin a été placé entre les accolades.
 window.handleLogin = async function() {
     console.log("LOGIN: Fonction handleLogin() appelée.");
@@ -1142,3 +1246,4 @@ async function sendFormDataRequest(payload, url) {
     // Le corps de la réponse Apps Script est toujours JSON
     return response.json();
 }
+
