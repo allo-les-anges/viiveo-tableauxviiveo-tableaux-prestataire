@@ -569,27 +569,46 @@ if (json.success) {
 }
 
 function createAndInjectModalHtml() {
-    // Vérifier si l'utilisateur est déjà connecté avant d'injecter la modale
+    // VÉRIFICATION RADICALE - Ne JAMAIS injecter sur la page de connexion
+    const hasLoginForm = document.getElementById('loginForm');
     const isLoggedIn = window.currentEmail && window.currentPrenom && window.currentNom;
-    const isLoginPage = document.getElementById('loginForm') && !isLoggedIn;
     
-    // Ne pas injecter la modale sur la page de connexion si l'utilisateur n'est pas connecté
-    if (isLoginPage) {
-        console.log('🚫 Modale scanner non injectée: page de connexion détectée');
-        return;
+    console.log('🔍 Debug - hasLoginForm:', hasLoginForm, 'isLoggedIn:', isLoggedIn);
+    
+    // Si le formulaire de login existe ET l'utilisateur n'est pas connecté, NE RIEN FAIRE
+    if (hasLoginForm && !isLoggedIn) {
+        console.log('🚫🚫🚫 MODALE BLOQUÉE: Page de connexion détectée, utilisateur non connecté');
+        
+        // Supprimer toute modale existante (au cas où)
+        const existingModal = document.getElementById('modalOverlay');
+        if (existingModal) {
+            existingModal.remove();
+            console.log('🗑️ Modale existante supprimée');
+        }
+        
+        const existingLoader = document.getElementById('fullScreenLoader');
+        if (existingLoader) {
+            existingLoader.remove();
+            console.log('🗑️ Loader existant supprimé');
+        }
+        
+        return; // ARRÊTER COMPLÈTEMENT
     }
-
+    
+    console.log('✅ Injection de la modale autorisée');
+    
+    // Le reste du code d'injection de la modale...
     const modalHtml = `
         <style>
-            /* Styles pour les loaders */
+            /* VOS STYLES EXISTANTS */
             .loader {
-                border: 4px solid #f3f3f3; /* Gris clair */
-                border-top: 4px solid #3498db; /* Bleu */
+                border: 4px solid #f3f3f3;
+                border-top: 4px solid #3498db;
                 border-radius: 50%;
                 width: 20px;
                 height: 20px;
                 animation: spin 2s linear infinite;
-                margin: 10px auto; /* Centrer le loader */
+                margin: 10px auto;
             }
 
             @keyframes spin {
@@ -597,155 +616,99 @@ function createAndInjectModalHtml() {
                 100% { transform: rotate(360deg); }
             }
 
-            /* Styles pour le loader plein écran */
             #fullScreenLoader {
                 position: fixed;
                 top: 0;
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background-color: rgba(0, 0, 0, 0.7); /* Fond semi-transparent */
+                background-color: rgba(0, 0, 0, 0.7);
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
                 align-items: center;
-                z-index: 1001; /* Assure qu'il est au-dessus des autres éléments, y compris la modale */
-                color: white; /* Couleur du texte */
+                z-index: 1001;
+                color: white;
                 font-size: 1.2em;
                 text-align: center;
-                /* Initialement caché via CSS pour une meilleure gestion par JS */
                 opacity: 0;
-                visibility: hidden; /* Utiliser visibility pour éviter les interactions */
-                transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out; /* Ajoute une transition douce */
+                visibility: hidden;
+                transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
             }
-            /* Règle pour afficher le loader */
+
             #fullScreenLoader.is-visible {
                 opacity: 1;
                 visibility: visible;
             }
 
             #fullScreenLoader .loader {
-                width: 50px; /* Plus grand pour le loader central */
+                width: 50px;
                 height: 50px;
                 border-width: 6px;
             }
+
             #fullScreenLoader p {
                 margin-top: 15px;
             }
+        </style>
+        <div id="modalOverlay" style="display: none;">
+            <div id="modalContent">
+                <div id="stepQR" style="display:none;">
+                    <h2>📸 Scanner le QR code client</h2>
+                    <div id="qr-reader"></div>
+                    <p id="geolocationMessage" style="color: #d32f2f; font-weight: bold; text-align: center; margin-top: 15px; display: none;"></p>
+                    <div id="qrScannerLoader" class="loader" style="display:none;"></div>
+                    <button id="btnCancelQR">Annuler</button>
+                </div>
 
-            /* Styles spécifiques pour la modale scanner */
-            #modalOverlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.8);
-                display: none;
-                justify-content: center;
-                align-items: center;
-                z-index: 1000;
-            }
+                <div id="stepForm" style="display:none;">
+                    <h2>📝 Fiche d'observation</h2>
+                    <form id="obsForm">
+                        <label for="clientName">Nom du client</label>
+                        <input type="text" id="clientName" readonly />
+                        <label for="obsDate">Date de l'observation</label>
+                        <input type="date" id="obsDate" required />
+                        <label for="etatSante">État de santé</label>
+                        <textarea id="etatSante" rows="3" placeholder="Décrire l'état de santé..."></textarea>
+                        <label for="etatForme">État de forme</label>
+                        <select id="etatForme" required>
+                            <option value="">-- Choisir --</option>
+                            <option>Très bon</option>
+                            <option>Bon</option>
+                            <option>Moyen</option>
+                            <option>Faible</option>
+                            <option>Très faible</option>
+                        </select>
+                        <label for="environnement">Environnement</label>
+                        <textarea id="environnement" rows="3" placeholder="Décrire l'environnement..."></textarea>
+                        <label for="photos">Photos (max 3)</label>
+                        <input type="file" id="photos" accept="image/*" multiple />
+                        <div id="photosPreview"></div>
+                        <button type="submit">Envoyer la fiche</button>
+                        <button type="button" id="btnCancelForm">Annuler</button>
+                    </form>
+                </div>
 
-            #modalContent {
-                background: white;
-                padding: 2rem;
-                border-radius: 1rem;
-                max-width: 90%;
-                max-height: 90%;
-                overflow-y: auto;
-                text-align: center;
-            }
-
-            #qr-reader {
-                width: 100%;
-                max-width: 400px;
-                margin: 1rem auto;
-            }
-
-            #stepQR, #stepForm, #stepSuccess {
-                display: none;
-            }
-
-            #stepQR h2, #stepForm h2, #stepSuccess h2 {
-                margin-bottom: 1rem;
-                color: #333;
-            }
-
-            #obsForm label {
-                display: block;
-                margin: 0.5rem 0 0.2rem;
-                font-weight: bold;
-                text-align: left;
-            }
-
-            #obsForm input, #obsForm select, #obsForm textarea {
-                width: 100%;
-                padding: 0.5rem;
-                margin-bottom: 1rem;
-                border: 1px solid #ddd;
-                border-radius: 0.25rem;
-            }
-
-            #photosPreview {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 0.5rem;
-                margin: 1rem 0;
-            }
-
-            #photosPreview img {
-                width: 100px;
-                height: 100px;
-                object-fit: cover;
-                border-radius: 0.25rem;
-            }
-
-            button {
-                background: #3498db;
-                color: white;
-                border: none;
-                padding: 0.75rem 1.5rem;
-                border-radius: 0.25rem;
-                cursor: pointer;
-                margin: 0.25rem;
-            }
-
-            button:hover {
-                background: #2980b9;
-            }
-
-            button[type="button"] {
-                background: #95a5a6;
-            }
-
-            button[type="button"]:hover {
-                background: #7f8c8d;
-            }
-
-            /* SOLUTION URGENTE - Cacher la modale scanner sur la page de connexion */
-#modalOverlay,
-#modalContent,
-[class*="modal"],
-[class*="scanner"] {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    position: fixed !important;
-    left: -9999px !important;
-    top: -9999px !important;
-    z-index: -9999 !important;
-}
-
-/* Cacher spécifiquement le texte du scanner dans le footer */
-body:not(.logged-in)::after,
-body:not(.logged-in)::before {
-    content: none !important;
-}
-
-/* Cacher tout élément contenant le texte du scanner */
-*:contains("Scanner le QR code client") {
-    display: none !important;
+                <div id="stepSuccess" style="display:none;">
+                    <h2>✅ Fiche envoyée avec succès !</h2>
+                    <button id="btnCloseSuccess">Fermer</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    if (!document.getElementById('fullScreenLoader')) {
+        document.body.insertAdjacentHTML('beforeend', `
+            <div id="fullScreenLoader" style="display: none; opacity: 0;">
+                <div class="loader"></div>
+                <p>Cette opération peut prendre quelques secondes...</p>
+            </div>
+        `);
+    }
+    
+    console.log("Modal HTML injected dynamically via JS.");
 }       
         </style>
         <div id="modalOverlay" style="display: none;">
@@ -1271,5 +1234,6 @@ async function sendFormDataRequest(payload, url) {
     // Le corps de la réponse Apps Script est toujours JSON
     return response.json();
 }
+
 
 
