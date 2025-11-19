@@ -628,15 +628,25 @@ if (json.success) {
 }
 
 function createAndInjectModalHtml() {
-    // VÉRIFICATION RADICALE - Ne JAMAIS injecter sur la page de connexion
-    const hasLoginForm = document.getElementById('loginForm');
-    const isLoggedIn = window.currentEmail && window.currentPrenom && window.currentNom;
+    // VÉRIFICATION RADICALE - Ne JAMAIS injecter sur les pages non-prestataires
+    const currentPath = window.location.pathname.toLowerCase();
+    const isPrestatairePath = currentPath.includes('iprestataires') || 
+                             currentPath.includes('prestataire') ||
+                             currentPath.includes('loginpresta');
     
-    console.log('🔍 Debug - hasLoginForm:', hasLoginForm, 'isLoggedIn:', isLoggedIn);
+    const hasPrestataireUI = document.querySelector('.viiveo-prestataire-interface') || 
+                            document.querySelector('.viiveo-missions') ||
+                            document.getElementById('loginForm');
     
-    // Si le formulaire de login existe ET l'utilisateur n'est pas connecté, NE RIEN FAIRE
-    if (hasLoginForm && !isLoggedIn) {
-        console.log('🚫🚫🚫 MODALE BLOQUÉE: Page de connexion détectée, utilisateur non connecté');
+    console.log('🔍 Debug injection modale:', {
+        path: currentPath,
+        isPrestatairePath: isPrestatairePath,
+        hasPrestataireUI: !!hasPrestataireUI
+    });
+    
+    // Si ce n'est PAS une page prestataire, NE RIEN FAIRE
+    if (!isPrestatairePath && !hasPrestataireUI) {
+        console.log('🚫🚫🚫 MODALE BLOQUÉE: Page non prestataire détectée');
         
         // Supprimer toute modale existante (au cas où)
         const existingModal = document.getElementById('modalOverlay');
@@ -654,7 +664,7 @@ function createAndInjectModalHtml() {
         return; // ARRÊTER COMPLÈTEMENT
     }
     
-    console.log('✅ Injection de la modale autorisée');
+    console.log('✅ Injection de la modale autorisée - Page prestataire confirmée');
     
     // Le reste du code d'injection de la modale...
     const modalHtml = `
@@ -756,7 +766,11 @@ function createAndInjectModalHtml() {
         </div>
     `;
     
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    // Vérifier une dernière fois avant d'injecter
+    if (!document.getElementById('modalOverlay')) {
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        console.log("Modal HTML injected dynamically via JS.");
+    }
     
     if (!document.getElementById('fullScreenLoader')) {
         document.body.insertAdjacentHTML('beforeend', `
@@ -766,70 +780,8 @@ function createAndInjectModalHtml() {
             </div>
         `);
     }
-    
-    console.log("Modal HTML injected dynamically via JS.");
-}       
-        </style>
-        <div id="modalOverlay" style="display: none;">
-            <div id="modalContent">
-                <div id="stepQR" style="display:none;">
-                    <h2>📸 Scanner le QR code client</h2>
-                    <div id="qr-reader"></div>
-                    <p id="geolocationMessage" style="color: #d32f2f; font-weight: bold; text-align: center; margin-top: 15px; display: none;"></p>
-                    <div id="qrScannerLoader" class="loader" style="display:none;"></div> <!-- LOADER POUR LE SCANNER QR -->
-                    <button id="btnCancelQR">Annuler</button>
-                </div>
-
-                <div id="stepForm" style="display:none;">
-                    <h2>📝 Fiche d'observation</h2>
-                    <form id="obsForm">
-                        <label for="clientName">Nom du client</label>
-                        <input type="text" id="clientName" readonly />
-                        <label for="obsDate">Date de l'observation</label>
-                        <input type="date" id="obsDate" required />
-                        <label for="etatSante">État de santé</label>
-                        <textarea id="etatSante" rows="3" placeholder="Décrire l'état de santé..."></textarea>
-                        <label for="etatForme">État de forme</label>
-                        <select id="etatForme" required>
-                            <option value="">-- Choisir --</option>
-                            <option>Très bon</option>
-                            <option>Bon</option>
-                            <option>Moyen</option>
-                            <option>Faible</option>
-                            <option>Très faible</option>
-                        </select>
-                        <label for="environnement">Environnement</label>
-                        <textarea id="environnement" rows="3" placeholder="Décrire l'environnement..."></textarea>
-                        <label for="photos">Photos (max 3)</label>
-                        <input type="file" id="photos" accept="image/*" multiple />
-                        <div id="photosPreview"></div>
-                        <button type="submit">Envoyer la fiche</button>
-                        <button type="button" id="btnCancelForm">Annuler</button>
-                    </form>
-                </div>
-
-                <div id="stepSuccess" style="display:none;">
-                    <h2>✅ Fiche envoyée avec succès !</h2>
-                    <button id="btnCloseSuccess">Fermer</button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    
-    // Injection du fullScreenLoader seulement si nécessaire
-    if (!document.getElementById('fullScreenLoader')) {
-        document.body.insertAdjacentHTML('beforeend', `
-            <div id="fullScreenLoader" style="display: none; opacity: 0;">
-                <div class="loader"></div>
-                <p>Cette opération peut prendre quelques secondes...</p>
-            </div>
-        `);
-    }
-    
-    console.log("Modal HTML injected dynamically via JS.");
 }
+
 // CORRECTION : L'ensemble de la fonction handleLogin a été placé entre les accolades.
 window.handleLogin = async function() {
     console.log("LOGIN: Fonction handleLogin() appelée.");
@@ -1293,6 +1245,7 @@ async function sendFormDataRequest(payload, url) {
     // Le corps de la réponse Apps Script est toujours JSON
     return response.json();
 }
+
 
 
 
